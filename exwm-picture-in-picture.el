@@ -95,6 +95,13 @@ is the currently selected window."
                                  exwm--connection))))
     (xcb:flush exwm--connection)))
 
+(defun exwm-picture-in-picture--get-nonfloating-window ()
+  "Get the first window in a non-floating buffer."
+  (car (window-list exwm-workspace--current)))
+
+;; (defvar exwm-picture-in-picture--video-toggle nil
+;;   "The video play/pause state.")
+
 (defun exwm-picture-in-picture-toggle-video ()
   "Toggle the play/pause state of the video. It assumes the first
 tabbed position would yield the play/pause button."
@@ -102,34 +109,42 @@ tabbed position would yield the play/pause button."
   (let ((curr-win (get-buffer-window (current-buffer) t))
         (float-win (get-buffer-window (exwm-picture-in-picture--get-float-buffer) t)))
     (if (eq curr-win float-win)
-        ;; It needs a buffer to return to
-        (user-error "Please call from a non-floating buffer!")
-      (when float-win
-        (select-window float-win)
-        (exwm-input--fake-key 'escape)
-        (exwm-picture-in-picture--mouse-click 'center 2) ;; middle click
-        (exwm-input--fake-key 'tab)
-        (exwm-input--fake-key 'return)
-        (exwm-input--fake-key 'S-tab) ;; reset button position
-        (select-window curr-win)))))
+        ;; Select the first window in the current frame
+        (setq curr-win exwm-picture-in-picture--get-nonfloating-window))
+    (if (not float-win)
+        (if exwm-picture-in-picture-move-mode (exwm-picture-in-picture-move-mode -1))
+      (select-window float-win)
+      ;; -- The below commented section does not work reliably
+      ;; (setq exwm-picture-in-picture--video-toggle (not exwm-picture-in-picture--video-toggle))
+      ;; (exwm-input--fake-key
+      ;;  (if exwm-picture-in-picture--video-toggle 'XF86AudioPause 'XF86AudioPlay))
+      (exwm-input--fake-key 'escape)
+      (exwm-picture-in-picture--mouse-click 'center 2) ;; middle click
+      (exwm-input--fake-key 'tab)
+      (exwm-input--fake-key 'return)
+      (exwm-input--fake-key 'S-tab) ;; reset button position
+      (select-window curr-win))))
 
 (defun exwm-picture-in-picture--move (direction)
   "Move floating frame in DIRECTION symbol: left, right, up, down."
-  (when (exwm-picture-in-picture--get-float-buffer)
+  (if (not (exwm-picture-in-picture--get-float-buffer))
+      (if exwm-picture-in-picture-move-mode (exwm-picture-in-picture-move-mode -1))
     ;; The mode is active in the calling buffer window, but the
     ;; floating window needs to be selected to work.
     (let ((curr-win (get-buffer-window (current-buffer)))
           (float-win (get-buffer-window exwm-picture-in-picture---float-buffer t)))
       (if (eq curr-win float-win)
-          (user-error "Please call function from a non-floating buffer!")
+          ;; Select the first window in the current frame
+          (setq curr-win exwm-picture-in-picture--get-nonfloating-window)
         (select-window float-win)
         ;; (with-current-buffer exwm-picture-in-picture---float-buffer
         (cond ((eq direction 'left) (exwm-floating-move (- exwm-picture-in-picture-move-amount) 0))
               ((eq direction 'right) (exwm-floating-move exwm-picture-in-picture-move-amount 0))
               ((eq direction 'up) (exwm-floating-move 0 (- exwm-picture-in-picture-move-amount)))
-              ((eq action 'down) (exwm-floating-move 0 exwm-picture-in-picture-move-amount))
+              ((eq direction 'down) (exwm-floating-move 0 exwm-picture-in-picture-move-amount))
               (t (user-error "No such direction"))))
       (select-window curr-win))))
+
 
 (define-minor-mode exwm-picture-in-picture-move-mode
   "The minor mode for manipulating the exwm Picture-in-Picture frame"
