@@ -66,7 +66,6 @@ Units can be a fraction of the visible workspace, or integer pixel values."
   :type 'plist
   :group 'exwm-picture-in-picture)
 
-(defun exwm-picture-in-picture--get-float-buffer ()
 (define-minor-mode exwm-picture-in-picture-move-mode
   "The minor mode for manipulating the exwm Picture-in-Picture frame"
   :init-value nil
@@ -83,6 +82,7 @@ Units can be a fraction of the visible workspace, or integer pixel values."
     (customize-set-variable 'exwm-floating-border-color (car vald))
     (customize-set-variable 'exwm-floating-border-width (cdr vald))))
 
+(defun exwm-picture-in-picture--get-floating-buffer ()
   "Get the floating frame buffer.
 If not found or currently active, search for it and update it."
   (if (buffer-live-p exwm-picture-in-picture---float-buffer)
@@ -94,10 +94,15 @@ If not found or currently active, search for it and update it."
       (if (with-current-buffer buff exwm--floating-frame)
           (setq exwm-picture-in-picture---float-buffer buff)))))
 
+(defun exwm-picture-in-picture--get-floating-window ()
+  "Get the window of the floating buffer."
+  (--> (exwm-picture-in-picture--get-floating-buffer)
+       (if it (get-buffer-window it t))))
+
 (defun exwm-picture-in-picture--get-floating-frame ()
-  "Get the frame of the floating window."
-  (--> (exwm-picture-in-picture--get-float-buffer)
-       (if it (window-frame (get-buffer-window it t)))))
+  "Get the frame of the floating buffer."
+  (--> (exwm-picture-in-picture--get-floating-window)
+       (if it (window-frame it))))
 
 (defun exwm-picture-in-picture--hide-tab-bar-in-floating-frame ()
   "Hide the tab-bar mode in the floating frame.
@@ -163,16 +168,18 @@ is the currently selected window."
 ;; (defvar exwm-picture-in-picture--video-toggle nil
 ;;   "The video play/pause state.")
 
+;;;###autoload
 (defun exwm-picture-in-picture-toggle-video ()
   "Toggle the play/pause state of the video.
 It assumes the first tabbed position would yield the play/pause button."
   (interactive)
   (let ((curr-win (get-buffer-window (current-buffer) t))
-        (float-win (get-buffer-window (exwm-picture-in-picture--get-float-buffer) t)))
+        (float-win (exwm-picture-in-picture--get-floating-window)))
     (if (eq curr-win float-win)
         ;; Select the first window in the current frame
         (setq curr-win (exwm-picture-in-picture--get-nonfloating-window)))
     (if (not float-win)
+        ;; if no window, disable the move mode
         (if exwm-picture-in-picture-move-mode (exwm-picture-in-picture-move-mode -1))
       (select-window float-win)
       ;; -- The below commented section does not work reliably
@@ -188,7 +195,7 @@ It assumes the first tabbed position would yield the play/pause button."
 
 (defun exwm-picture-in-picture--move (direction)
   "Move floating frame in DIRECTION symbol: left, right, up, down."
-  (if (not (exwm-picture-in-picture--get-float-buffer))
+  (if (not (exwm-picture-in-picture--get-floating-buffer))
       (if exwm-picture-in-picture-move-mode (exwm-picture-in-picture-move-mode -1))
     ;; The mode is active in the calling buffer window, but the
     ;; floating window needs to be selected to work.
