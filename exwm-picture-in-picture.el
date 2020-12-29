@@ -110,8 +110,10 @@ Added to the ``after-make-frame-functions'' hook."
   (set-frame-parameter (exwm-picture-in-picture--get-floating-frame)
                        'tab-bar-lines 0))
 
+;;;###autoload
 (defun exwm-picture-in-picture-setup ()
   "Setup the floating window properties and associate it with the ``Picture-in-Picture'' window.  Call this function upon loading the package."
+  (interactive)
   (pushnew `((equal exwm-title "Picture-in-Picture")
              floating t
              ,@exwm-picture-in-picture-decorations
@@ -151,8 +153,8 @@ is the currently selected window."
                                                 :root exwm--root
                                                 :event window-id
                                                 :child 0
-                                                :root-x 0 ;;(car xy-pos)
-                                                :root-y 0 ;;(cdr xy-pos)
+                                                :root-x (car xy-pos)
+                                                :root-y (cdr xy-pos)
                                                 :event-x (car xy-pos)
                                                 :event-y (cdr xy-pos)
                                                 :state (cdr b-action)
@@ -218,18 +220,21 @@ It assumes the first tabbed position would yield the play/pause button."
 ;; (defun center-click-current-window ()
 ;;   (exwm-picture-in-picture--mouse-click 'center 2))
 
+;;;###autoload
 (defun exwm-picture-in-picture-pause-media-windows (&optional matchstr num)
   "Pause all media windows matching regex MATCHSTR, and limit to the first NUM.
 
 If MATCHSTR is nil, default to ``.*[Ww]atch.*''.  If NUM is nil, limit to none."
   (interactive)
-  (let* ((matchstr (or matchstr ".*[Ww]atch.*"))
+  (let* ((matchstr (or matchstr (rx (seq (* any)
+                                         (or "YouTube" (any ?W ?w) "atch")
+                                         (* any)))))
          (blist (buffer-list))
          (nblist (length blist))
          (num (or num nblist)) ;; if nil consider all entries
          (ind -1)
          (toggled-windows ""))
-    ;;(walk-windows (lambda (wid)
+    ;;(walk-windows (lambda (win)((
     (while (and (< (setq ind (1+ ind)) nblist) (> num 0))
       (let* ((buff (nth ind blist))
              (wid (exwm--buffer->id buff)))
@@ -237,11 +242,13 @@ If MATCHSTR is nil, default to ``.*[Ww]atch.*''.  If NUM is nil, limit to none."
           (with-current-buffer buff
             (and exwm-title
                  (when (string-match matchstr exwm-title)
-                   (setq toggled-windows (concat toggled-windows (format "'%s' " exwm-title)))
-                   (exwm-picture-in-picture--mouse-click 'center 1 wid)
+                   (setq toggled-windows (concat toggled-windows
+                                                 (format "'%s %s "
+                                                         exwm-title
+                                                         (exwm-picture-in-picture--mouse-click 'center 1 wid))))
                    (setq num (1- num))))))))
+    (exwm-picture-in-picture-toggle-video)
     (message "Toggled: %s" toggled-windows)))
-
 
 (provide 'exwm-picture-in-picture)
 ;;; exwm-picture-in-picture.el ends here
