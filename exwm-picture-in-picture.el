@@ -67,6 +67,22 @@ Units can be a fraction of the visible workspace, or integer pixel values."
   :group 'exwm-picture-in-picture)
 
 (defun exwm-picture-in-picture--get-float-buffer ()
+(define-minor-mode exwm-picture-in-picture-move-mode
+  "The minor mode for manipulating the exwm Picture-in-Picture frame"
+  :init-value nil
+  :lighter " Picture-in-Picture"
+  :keymap
+  '(([left] . (lambda () (interactive) (exwm-picture-in-picture--move 'left)))
+    ([right] . (lambda () (interactive) (exwm-picture-in-picture--move 'right)))
+    ([up] . (lambda () (interactive) (exwm-picture-in-picture--move 'up)))
+    ([down] . (lambda () (interactive) (exwm-picture-in-picture--move 'down)))
+    ([? ] . exwm-picture-in-picture-toggle-video)
+    ([return] . exwm-picture-in-picture-move-mode))
+  (let* ((mode (if exwm-picture-in-picture-move-mode :moving :stationary))
+         (vald (plist-get exwm-picture-in-picture-border mode)))
+    (customize-set-variable 'exwm-floating-border-color (car vald))
+    (customize-set-variable 'exwm-floating-border-width (cdr vald))))
+
   "Get the floating frame buffer.
 If not found or currently active, search for it and update it."
   (if (buffer-live-p exwm-picture-in-picture---float-buffer)
@@ -191,21 +207,6 @@ It assumes the first tabbed position would yield the play/pause button."
       (select-window curr-win))))
 
 
-(define-minor-mode exwm-picture-in-picture-move-mode
-  "The minor mode for manipulating the exwm Picture-in-Picture frame"
-  :init-value nil
-  :lighter " Picture-in-Picture"
-  :keymap
-  '(([left] . (lambda () (interactive) (exwm-picture-in-picture--move 'left)))
-    ([right] . (lambda () (interactive) (exwm-picture-in-picture--move 'right)))
-    ([up] . (lambda () (interactive) (exwm-picture-in-picture--move 'up)))
-    ([down] . (lambda () (interactive) (exwm-picture-in-picture--move 'down)))
-    ([t] . exwm-picture-in-picture-toggle-video)
-    ([return] . exwm-picture-in-picture-move-mode))
-  (let* ((mode (if exwm-picture-in-picture-move-mode :moving :stationary))
-         (vald (plist-get exwm-picture-in-picture-border mode)))
-    (customize-set-variable 'exwm-floating-border-color (car vald))
-    (customize-set-variable 'exwm-floating-border-width (cdr vald))))
 
 ;; (defun center-click-current-window ()
 ;;   (exwm-picture-in-picture--mouse-click 'center 2))
