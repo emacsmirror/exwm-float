@@ -215,6 +215,44 @@ It assumes the first tabbed position would yield the play/pause button."
               (t (user-error "No such direction"))))
       (select-window curr-win))))
 
+(defun exwm-picture-in-picture-resize-delta (&optional deltax deltay)
+  "Resize the floating window by DELTAX pixels right and DELTAY pixels down.
+
+Both DELTAX and DELTAY default to 1.  This command should be bound locally."
+  (exwm--log "DeltaX: %s, DeltaY: %s" deltax deltay)
+  (unless (and (derived-mode-p 'exwm-mode) exwm--floating-frame)
+    (user-error "[EXWM] `exwm-floating-move' is only for floating X windows"))
+  (unless deltax (setq deltax 1))
+  (unless deltay (setq deltay 1))
+  (unless (and (= 0 deltax) (= 0 deltay))
+    (let* ((floating-container (frame-parameter exwm--floating-frame
+                                                'exwm-container))
+           (geometry (xcb:+request-unchecked+reply exwm--connection
+                         (make-instance 'xcb:GetGeometry
+                                        :drawable floating-container)))
+           (edges (window-inside-absolute-pixel-edges)))
+      (with-slots (width height) geometry
+        (exwm--set-geometry floating-container nil nil
+                            (+ width deltax) (+ height deltay))
+        (exwm--set-geometry exwm--id nil nil
+                            (+ width deltax) (+ height deltay))
+      (xcb:flush exwm--connection)))))
+
+(defun exwm-picture-in-picture-resize (&optional width height)
+  "Resize the floating window by WIDTH pixels and down by HEIGHT pixels.
+
+Both WIDTH and HEIGHT default to 1.  This command should be bound locally."
+  (exwm--log "width: %s, height: %s" width height)
+  (unless (and (derived-mode-p 'exwm-mode) exwm--floating-frame)
+    (user-error "[EXWM] `exwm-floating-move' is only for floating X windows"))
+  (unless width (setq width 1))
+  (unless height (setq height 1))
+  (unless (and (= 0 width) (= 0 height))
+    (let ((floating-container (frame-parameter exwm--floating-frame
+                                                'exwm-container)))
+      (exwm--set-geometry floating-container nil nil width height)
+      (exwm--set-geometry exwm--id nil nil width height)
+      (xcb:flush exwm--connection))))
 
 
 ;; (defun center-click-current-window ()
