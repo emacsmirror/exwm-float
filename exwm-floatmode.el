@@ -42,7 +42,8 @@
   "Buffer currently showed in the floating frame.")
 
 (defcustom exwm-floatmode-title "Picture-in-Picture"
-  "Name of floating exwm title to modify."
+  "Name of floating EXWM title to modify.
+This can be found by invoking ``exwm-title'' on a window."
   :type 'string
   :group 'exwm-floatmode)
 
@@ -72,7 +73,59 @@ Units can be a fraction of the visible workspace, or integer pixel values."
   :type 'plist
   :group 'exwm-floatmode)
 
-(defcustom exwm-floatmode
+(defvar exwm-floatmode-position-configs
+  '((:key [1] :title "Picture-in-Picture" :x 0 :y 0 :width 300 :height 400))
+  "List of ``(:key K :title T :x X :y Y :width W :height H))'' elements, where K denotes the keyboard sequence used to place the floating window matching TITLE to position X and Y and resizing it to W and H."
+  :type 'list
+  :group 'exwm-floatmode)
+
+(defvar exwm-floatmode-position-file
+  (concat (file-name-as-directory user-emacs-directory) "float_positions.el")
+  "File to store floating video positions.")
+
+(defun exwm-floatmode-position-save (&optional hotkey)
+  "Save the current floating window position to a HOTKEY."
+  (let ((keyseq (read-key-sequence "Hotkey: "))
+        (posinfo (exwm-floatmode--do-floatfunc-and-restore
+                  (lambda (cwin fwin)
+                    (with-slots (x y width height)
+                        (xcb:+request-unchecked+reply exwm--connection
+                            (make-instance
+                             'xcb:GetGeometry :drawable
+                             (frame-parameter exwm--floating-frame 'exwm-container)))
+                      (list :key keyseq :title exwm-title :x x :y y :w width :h height))))))
+    (message "Binding '%s' to '%s'" keyseq posinfo)
+    (exwm-floatmode--position-store posinfo)
+    (exwm-floatmode--refresh-minor-mode)))
+
+(defun exwm-floatmode--refresh-minor-mode ()
+  "Refresh the minor mode so that the new bindings from ``exwm-floatmode-position-configs'' take effect."
+  (exwm-floatmode-minor-mode -1)
+  (exwm-floatmode-minor-mode 1))
+
+(defun exwm-floatmode--position-store (posinfo)
+  "Store the following POSINFO into the
+``exwm-floatmode-position-configs'' variable, and sync with the
+``exwm-floatmode-position-file''."
+  (when (and posinfo exwm-floatmode-position-configs)
+    (pushnew posinfo exwm-floatmode-position-configs)
+    (if exwm-floatmode-position-configs
+        (with-temp-buffer
+          (insert (format "%s" exwm-floatmode-position-configs))
+          (write-file exwm-floatmode-position-file)))))
+
+(defun exwm-floatmode--position-restore ()
+  "Set the ``exwm-floatmode-position-configs'' variable from the contents of the ``exwm-floatmode-position-file''."
+  (if exwm-floatmode-position-file
+      (with-temp-buffer
+        (unless (file-exists-p exwm-floatmode-position-file)
+          (user-error "``exwm-floatmode-position-file'' does not exist"))
+        (insert-file-contents exwm-floatmode-position-file)
+        (let ((tmpvar (eval (buffer-string))))
+          (if tmpvar
+              (setq exwm-floatmode-position-configs tmpvar)
+            (user-error "Cannot parse"))))
+    (user-error "``exwm-floatmode-position-file'' not set")))
 
 ;;(unintern exwm-floatmode-move-mode)
 (define-minor-mode exwm-floatmode-move-mode
@@ -80,12 +133,15 @@ Units can be a fraction of the visible workspace, or integer pixel values."
   :init-value nil
   :lighter " FloatMode"
   :keymap
-  '(([left] . (lambda () (interactive) (exwm-floatmode-move 'left)))
-    ([right] . (lambda () (interactive) (exwm-floatmode-move 'right)))
-    ([up] . (lambda () (interactive) (exwm-floatmode-move 'up)))
-    ([down] . (lambda () (interactive) (exwm-floatmode-move 'down)))
-    ([1] . (lambda () (interactive) (exwm-floatmode-move 'down)))
-    ([? ] . exwm-floatmode-toggle-video)
+  '(([left] . (lambda () (interactive) (exwm-floatmode-move-direction 'left)))
+    ([right] . (lambda () (interactive) (exwm-floatmode-move-direction 'right)))
+    ([up] . (lambda () (interactive) (exwm-floatmode-move-direction 'up)))
+    ([down] . (lambda () (interactive) (exwm-floatmode-move-direction 'down)))
+    ([\S-left] . (lambda () (interactive) (exwm-floatmode-move-direction 'left 100)))
+    ([\S-right] . (lambda () (interactive) (exwm-floatmode-move-direction 'right 100)))
+    ([\S-up] . (lambda () (interactive) (exwm-floatmode-move-direction 'up 100)))
+    ([\S-down] . (lambda () (interactive) (exwm-floatmode-move-direction 'down 100)))
+    ([t] . exwm-floatmode-toggle-video)
     ([\M-left] . (lambda () (interactive) (exwm-floatmode-resize-delta -20 nil)))
     ([\M-right] . (lambda () (interactive) (exwm-floatmode-resize-delta 20 nil)))
     ([\M-up] . (lambda () (interactive) (exwm-floatmode-resize-delta nil -20)))
@@ -100,7 +156,22 @@ Units can be a fraction of the visible workspace, or integer pixel values."
   (let* ((mode (if exwm-floatmode-move-mode :moving :stationary))
          (vald (plist-get exwm-floatmode-border mode)))
     (customize-set-variable 'exwm-floating-border-color (car vald))
-    (customize-set-variable 'exwm-floating-border-width (cdr vald))))
+    (customize-set-variable 'exwm-floating-border-width (cdr vald))
+    ;; Restore other bindings from file
+    (exwm-floatmode--position-restore)
+    (exwm-floatmode--position-expandbindings)))
+
+(defun exwm-floatmode--position-expandbindings ()
+  "Expand the bindings from ``exwm-floatmode-position-configs'' into the current keymap, and check for conflicts."
+  (dolist (binding exwm-floatmode-position-configs)
+    (if (string-match " undefined" (describe-key-briefly [a]))
+        (let ((key (plist-get binding :key))
+              (title (plist-get binding :title))
+              (x (plist-get binding :x)) (y (plist-get binding :y))
+              (w (plist-get binding :width)) (h (plist-get binding :height)))
+          (local-set-key key (lambda () (interactive)
+                               (exwm-floatmode--move x y w h title))))
+      (user-error "%s is already set" binding))))
 
 (defvar exwm-floatmode--prewindow nil
   "Window before minor-mode was called, to be restored on exit.")
@@ -162,7 +233,7 @@ Added to the ``after-make-frame-functions'' hook."
                        'tab-bar-lines 0))
 
 (defun exwm-floatmode--do-floatfunc-and-restore (func)
-  "Select the floating window, perform FUNC and then restore the current window. 
+  "Select the floating window, perform FUNC and then restore the current window.
 If the floating window is already selected, then just run FUNC."
   (let ((curr-win (get-buffer-window (current-buffer) t))
         (float-win (exwm-floatmode--get-floating-window)))
@@ -173,8 +244,9 @@ If the floating window is already selected, then just run FUNC."
     (if (eq curr-win float-win)
         (funcall func curr-win float-win)
       (select-window float-win)
-      (funcall func curr-win float-win)
-      (select-window curr-win))))
+      (let ((res (funcall func curr-win float-win)))
+        (select-window curr-win)
+        res)))) ;; return result of func
 
 ;;;###autoload
 (defun exwm-floatmode-setup ()
@@ -182,7 +254,7 @@ If the floating window is already selected, then just run FUNC."
   (interactive)
   (customize-set-variable 'exwm-manage-configurations
                           (pushnew
-                           `((equal exwm-title exwm-floatmode-title)
+                           `(t ;;(equal exwm-title exwm-floatmode-title)
                              floating t
                              ,@exwm-floatmode-decorations
                              ,@exwm-floatmode-geometry)
@@ -256,7 +328,7 @@ It assumes the first tabbed position would yield the play/pause button."
      (exwm-input--fake-key 'return)
      (exwm-input--fake-key 'S-tab)))) ;; reset button position
 
-(defun exwm-floatmode-move (direction &optional amount)
+(defun exwm-floatmode-move-direction (direction &optional amount)
   "Move floating frame by AMOUNT in DIRECTION symbol: left, right, up, down."
   (interactive (list (read-key "Direction ")))
   (let ((amount (or amount (plist-get exwm-floatmode-modify-amount :move))))
@@ -267,6 +339,21 @@ It assumes the first tabbed position would yield the play/pause button."
              ((eq direction 'up) (exwm-floating-move 0 (- amount)))
              ((eq direction 'down) (exwm-floating-move 0 amount))
              (t (user-error "No such direction")))))))
+
+(defun exwm-floatmode-move (x y width height &optional title)
+  "Move and resize floating window to position X and Y and size WIDTH and HEIGHT, optionally only if the window TITLE."
+  (interactive)
+  (unless (and (derived-mode-p 'exwm-mode) exwm--floating-frame)
+    (user-error "[EXWM] `exwm-floating-move' is only for floating X windows"))
+  (exwm-floatmode--do-floatfunc-and-restore
+   (lambda (a b)
+     (let ((floating-container (frame-parameter exwm--floating-frame
+                                                'exwm-container)))
+       (if (not (string= (or title "") exwm-title))
+           (user-error "'%s' not a set config")
+         (exwm--set-geometry floating-container x y width height)
+         (exwm--set-geometry exwm--id x y width height)
+         (xcb:flush exwm--connection))))))
 
 (defun exwm-floatmode-resize-delta (&optional deltax deltay)
   "Resize the floating window by DELTAX pixels right and DELTAY pixels down.
@@ -308,6 +395,7 @@ Both DELTAX and DELTAY default to 1.  This command should be bound locally."
       (exwm--set-geometry exwm--id nil nil width height)
       (xcb:flush exwm--connection))))
 
+  
 ;;;###autoload
 (defun exwm-floatmode-pause-media-windows (&optional matchstr num)
   "Pause all media windows matching regex MATCHSTR, and limit to the first NUM.
