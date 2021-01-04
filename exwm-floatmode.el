@@ -347,7 +347,14 @@ It assumes the first tabbed position would yield the play/pause button."
              ((eq direction 'right) (exwm-floating-move amount 0))
              ((eq direction 'up) (exwm-floating-move 0 (- amount)))
              ((eq direction 'down) (exwm-floating-move 0 amount))
-             (t (user-error "No such direction")))))))
+             (t (user-error "No such direction")))
+       (with-slots (x y width height)
+           (xcb:+request-unchecked+reply
+               exwm--connection (make-instance
+                                 'xcb:GetGeometry
+                                 :drawable (frame-parameter exwm--floating-frame
+                                                            'exwm-container)))
+         (message "%s" (list :x x :y y :width: width :height height)))))))
 
 (defun exwm-floatmode-move (x y width height &optional title)
   "Move and resize floating window to position X and Y and size WIDTH and HEIGHT, optionally only if the window TITLE."
@@ -382,12 +389,13 @@ Both DELTAX and DELTAY default to 1.  This command should be bound locally."
                             (make-instance 'xcb:GetGeometry
                                            :drawable floating-container)))
               (edges (window-inside-absolute-pixel-edges)))
-         (with-slots (width height) geometry
-           (exwm--set-geometry floating-container nil nil
-                               (+ width deltax) (+ height deltay))
-           (exwm--set-geometry exwm--id nil nil
-                               (+ width deltax) (+ height deltay))
-           (xcb:flush exwm--connection)))))))
+         (with-slots (x y width height) geometry
+           (let ((width-new (+ width deltax))
+                 (height-new (+ height deltay)))
+             (exwm--set-geometry floating-container nil nil width-new height-new)
+             (exwm--set-geometry exwm--id nil nil width-new height-new)
+             (xcb:flush exwm--connection)
+             (message "%s" (list :x x :y y :width: width-new :height height-new)))))))))
 
 (defun exwm-floatmode-resize (width height)
   "Resize the floating window to WIDTH pixels and to HEIGHT pixels."
