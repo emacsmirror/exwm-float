@@ -150,12 +150,18 @@ Units can be a fraction of the visible workspace, or integer pixel values."
     ([\M-up] . (lambda () (interactive) (exwm-floatmode-resize-delta nil -20)))
     ([\M-down] . (lambda () (interactive) (exwm-floatmode-resize-delta nil 20)))
     ([return] . exwm-floatmode-move-mode))
+  (exwm-floatmode--initialise-mm))
+
+(defun exwm-floatmode--initialise-mm ()
+  "Initialise ``exwm-floatmode-move-mode''."
   (when exwm--floating-frame
-    (exwm-floatmode-move-mode -1)
     ;; For some reason the floating window does not respond to mode
     ;; commands, and when enabled on the buffer it shifts the buffer
-    ;; out of the floating frame.
-    (user-error "This mode should NOT be enabled on the floating frame!"))
+    ;; out of the floating frame, so instead we switch to the previous
+    ;; window and try again.
+    (exwm-floatmode-move-mode -1)
+    (other-window -1 t) ;; t -- all frames
+    (exwm-floatmode-move-mode -1)) ;; enable in new window
   (let* ((mode (if exwm-floatmode-move-mode :moving :stationary))
          (vald (plist-get exwm-floatmode-border mode)))
     (customize-set-variable 'exwm-floating-border-color (car vald))
