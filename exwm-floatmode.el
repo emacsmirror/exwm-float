@@ -74,10 +74,11 @@ Units can be a fraction of the visible workspace, or integer pixel values."
   :group 'exwm-floatmode)
 
 (defvar exwm-floatmode-position-configs
-  '((:key [1] :title "Picture-in-Picture" :x 0 :y 0 :width 300 :height 400))
-  "List of ``(:key K :title T :x X :y Y :width W :height H))'' elements, where K denotes the keyboard sequence used to place the floating window matching TITLE to position X and Y and resizing it to W and H."
-  :type 'list
-  :group 'exwm-floatmode)
+  '((:key [1] :title nil :x 0 :y 0 :width 400 :height 300)
+    (:key [2] :title nil :x 100 :y 100 :width 400 :height 300)
+    (:key [3] :title nil :x 200 :y 200 :width 300 :height 400)
+    (:key [4] :title nil :x 300 :y 300 :width 300 :height 400))
+    "List of ``(:key K :title T :x X :y Y :width W :height H))'' elements, where K denotes the keyboard sequence used to place the floating window matching TITLE to position X and Y and resizing it to W and H.  If TITLE is nil, then apply to the first floating window.")
 
 (defvar exwm-floatmode-position-file
   (concat (file-name-as-directory user-emacs-directory) "float_positions.el")
@@ -119,11 +120,13 @@ Units can be a fraction of the visible workspace, or integer pixel values."
   (if exwm-floatmode-position-file
       (with-temp-buffer
         (unless (file-exists-p exwm-floatmode-position-file)
-          (user-error "``exwm-floatmode-position-file'' does not exist"))
+          (with-temp-buffer
+            (insert "")
+            (write-file exwm-floatmode-position-file)))
         (insert-file-contents exwm-floatmode-position-file)
-        (let ((tmpvar (eval (buffer-string))))
+        (let ((tmpvar (read-from-string (format "(progn %s)" (buffer-string)))))
           (if tmpvar
-              (setq exwm-floatmode-position-configs tmpvar)
+              (setq exwm-floatmode-position-configs (car tmpvar))
             (user-error "Cannot parse"))))
     (user-error "``exwm-floatmode-position-file'' not set")))
 
@@ -395,7 +398,7 @@ Both DELTAX and DELTAY default to 1.  This command should be bound locally."
       (exwm--set-geometry exwm--id nil nil width height)
       (xcb:flush exwm--connection))))
 
-  
+
 ;;;###autoload
 (defun exwm-floatmode-pause-media-windows (&optional matchstr num)
   "Pause all media windows matching regex MATCHSTR, and limit to the first NUM.
