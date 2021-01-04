@@ -178,8 +178,9 @@ Units can be a fraction of the visible workspace, or integer pixel values."
               (title (plist-get binding :title))
               (x (plist-get binding :x)) (y (plist-get binding :y))
               (w (plist-get binding :width)) (h (plist-get binding :height)))
-          (local-set-key key (lambda () (interactive)
-                               (exwm-floatmode--move x y w h title))))
+          (define-key exwm-floatmode-move-mode key
+            (lambda () (interactive)
+              (exwm-floatmode--move x y w h title))))
       (user-error "%s is already set" binding))))
 
 (defvar exwm-floatmode--prewindow nil
@@ -359,13 +360,13 @@ It assumes the first tabbed position would yield the play/pause button."
 (defun exwm-floatmode-move (x y width height &optional title)
   "Move and resize floating window to position X and Y and size WIDTH and HEIGHT, optionally only if the window TITLE."
   (interactive)
-  (unless (and (derived-mode-p 'exwm-mode) exwm--floating-frame)
-    (user-error "[EXWM] `exwm-floating-move' is only for floating X windows"))
   (exwm-floatmode--do-floatfunc-and-restore
    (lambda (a b)
      (let ((floating-container (frame-parameter exwm--floating-frame
                                                 'exwm-container)))
-       (if (not (string= (or title "") exwm-title))
+       ;; if no title → continue
+       ;; if title and match → continue
+       (if (not (or (not title) (string= title exwm-title)))
            (user-error "'%s' not a set config")
          (exwm--set-geometry floating-container x y width height)
          (exwm--set-geometry exwm--id x y width height)
