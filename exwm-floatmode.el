@@ -174,7 +174,7 @@ visible workspace, or integer pixel values."
       (kill-buffer "EXWM FloatMode"))
   ;; Due to this mode having a tendency to bleed into other buffers
   ;; we must ensure that all buffers have this mode turned off on exit.
-  (dolist (buff (buffer-list))
+  (dolist (buff (buffer-list)) ;; REALLY?
     (with-current-buffer buff
       (exwm-floatmode-move-mode -1))))
 
@@ -229,9 +229,11 @@ JUNK is discarded."
   (when (exwm-floatmode--get-floating-frame)
     (let* ((floater (get-buffer-create "EXWM FloatMode"))
            (newwin (popwin:popup-buffer floater
-                                        :height 10 :position 'bottom
+                                        :height 2 :position 'bottom
                                         :dedicated t :stick t :tail t)))
       (with-current-buffer "EXWM FloatMode"
+        (add-hook 'quit-window-hook #'exwm-floatmode--move-mode-exit)
+        (setq-local buffer-read-only t)
         (exwm-floatmode-move-mode 1)))))
 
 (defvar exwm-floatmode--float-buffer nil
@@ -288,9 +290,10 @@ If the floating window is already selected, then just run FUNC."
   "Setup the floating window properties and associate it with the floating window.  Call this function upon loading the package."
   (interactive)
   ;; we use customize-set-variable because it triggers the :set function
+  (setq exwm-manage-configurations nil)
   (customize-set-variable exwm-manage-configurations
-                          (pushnew
-                           `(t ;; (equal exwm-title exwm-floatmode-title)
+                          (push
+                           `((equal exwm-title exwm-floatmode-title)
                              floating t
                              ,@exwm-floatmode-decorations
                              ,@exwm-floatmode-geometry)
