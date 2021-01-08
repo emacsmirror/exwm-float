@@ -199,10 +199,15 @@ e.g.3 (:title \"Baz\" :common-fn nil :keyargs '((a . (barista 1 22)) (b . (foofi
   :lighter " FloatMode"
   :keymap
   ;; left, right, up, down, space all likely bound to video controls
-  '(([\S-left] . (lambda () (interactive) (exwm-floatmode-move-direction 'left)))
-    ([\S-right] . (lambda () (interactive) (exwm-floatmode-move-direction 'right)))
-    ([\S-up] . (lambda () (interactive) (exwm-floatmode-move-direction 'up)))
-    ([\S-down] . (lambda () (interactive) (exwm-floatmode-move-direction 'down)))
+  '(([\S-M-left] . (lambda () (interactive) (exwm-floatmode--send-key 'left)))
+    ([\S-M-right] . (lambda () (interactive) (exwm-floatmode--send-key 'right)))
+    ([\S-M-up] . (lambda () (interactive) (exwm-floatmode--send-key 'up)))
+    ([\S-M-down] . (lambda () (interactive) (exwm-floatmode--send-key 'down)))
+    ([SPC] . (lambda () (interactive) (exwm-floatmode--send-key 'SPC)))
+    ([left] . (lambda () (interactive) (exwm-floatmode-move-direction 'left)))
+    ([right] . (lambda () (interactive) (exwm-floatmode-move-direction 'right)))
+    ([up] . (lambda () (interactive) (exwm-floatmode-move-direction 'up)))
+    ([down] . (lambda () (interactive) (exwm-floatmode-move-direction 'down)))
     ([\S-M-left] . (lambda () (interactive) (exwm-floatmode-move-direction 'left 100)))
     ([\S-M-right] . (lambda () (interactive) (exwm-floatmode-move-direction 'right 100)))
     ([\S-M-up] . (lambda () (interactive) (exwm-floatmode-move-direction 'up 100)))
@@ -213,7 +218,8 @@ e.g.3 (:title \"Baz\" :common-fn nil :keyargs '((a . (barista 1 22)) (b . (foofi
     ([\M-up] . (lambda () (interactive) (exwm-floatmode-resize-delta nil -20)))
     ([\M-down] . (lambda () (interactive) (exwm-floatmode-resize-delta nil 20)))
     ([s] . exwm-floatmode-position-save)
-    ([return] . exwm-floatmode-move-mode))
+    ([q] . exwm-floatmode-move-mode) ;; quit
+    ([return] . exwm-floatmode-move-mode)) ;; quit
   (exwm-floatmode--initialise-mm))
 
 
