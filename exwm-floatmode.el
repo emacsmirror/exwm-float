@@ -219,10 +219,9 @@ e.g.3 (:title \"Baz\" :common-fn nil :keyargs '((a . (barista 1 22)) (b . (foofi
 
 (defun exwm-floatmode--send-key (keyseq)
   "Send KEYSEQ to floating window."
-  ;;(exwm-floatmode--do-floatfunc-and-restore
-  ;;(lambda (c f)
-  (select-window (exwm-floatmode--get-floating-window))
-  (setq unread-command-events (kbd keyseq)))
+  (exwm-floatmode--do-floatfunc-and-restore
+   (lambda (c f)
+     (exwm-input--fake-key keyseq))))
 
 (defun exwm-floatmode--move-mode-exit ()
   "Functions to run on move-mode exit. Hooked to
