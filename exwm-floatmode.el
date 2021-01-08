@@ -135,6 +135,63 @@ visible workspace, or integer pixel values."
             (user-error "Cannot parse"))))
     (user-error "``exwm-floatmode-position-file'' not set")))
 
+(defcustom exwm-floatmode-custom-modes
+  '(;; Move window default
+    (:title nil :common-fn exwm-floatmode-move-direction
+            :keyargs (left right up down SPC))
+    ;; Move window 100
+    (:title nil :common-fn exwm-floatmode-move-direction
+            :keyargs ((\S-left . (left 100))
+                      (\S-right . (right 100))
+                      (\S-up . (up 100))
+                      (\S-down . (down 100))))
+    ;; Resize window
+    (:title nil :common-fn exwm-floatmode-resize-delta
+            :keyargs ((\M-left . (-20 nil))
+                      (\M-right . (20 nil))
+                      (\M-up . (nil -20))
+                      (\M-down . (nil 20))))
+    ;; Video controls
+    (:title "Picture-in-Picture" :common-fn exwm-floatmode--send-key
+            :keyargs (left right up down SPC)))
+  "A list of sparse keymaps to be loaded when TITLE matches the ``exwm-title'' for the floating window.
+
+If TITLE is nil, then the mode is enabled on all floating
+windows. The bindings are set by binding the car of each KEYARGS to the COMMON-FN plus the cdr of each KEYARGS.
+
+e.g.1 (:title \"Foo\" :common-fn #'barista :keyargs '((a 9)))
+         becomes (([a] . (barista a))
+                  ([9] . (barista 9)))
+
+e.g.2 (:title \"Bar\" :common-fn #'foofighter :keyargs '((a . (b 22)) (9 . (123 m)) (left . (1 1))))
+         becomes (([a] . (foofighter b 22))
+                  ([9] . (foofighter 123 m))
+                  ([left] . (foofighter 1 1)))
+
+e.g.3 (:title \"Baz\" :common-fn nil :keyargs '((a . (barista 1 22)) (b . (foofighter f g))))
+         becomes (([a] . (barista 1 22))
+                  ([b] . (foofighter f g)))
+"
+  :type 'list
+  :group 'exwm-floatmode)
+
+
+(defun exwm-floatmode--convert2keymap (entry)
+  "Convert an entry in ``exwm-floatmode-custom-modes'' to a key map."
+  (let ((title (plist-get entry :title))
+        (commonfn (plist-get entry :common-fn))
+        (keyargs (plist-get entry :keyargs))
+        (map (make-sparse-keymap)))
+    ;;(set-keymap-parent map <theirmap>)
+    (--map (let* ((key (if (eq (type-of it) 'cons) (car it) it))
+                  (skey [key])
+                  (args (if (eq (type-of it) 'cons) (cdr it)))
+                  (func (if (not args) ;; only key
+                            `(,commonfn ,key)
+                          `(,commonfn ,@args))))
+             (define-key map skey func))
+           keyargs)
+    map))
 ;;(unintern 'exwm-floatmode-move-mode)
 (define-minor-mode exwm-floatmode-move-mode
   "The minor mode for manipulating the exwm floating frame. Works only when called from non-floating frame, and it should therefore only be called from the ``exwm-floatmode-minor-mode'' function, which ensures this."
