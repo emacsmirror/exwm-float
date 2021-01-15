@@ -28,6 +28,14 @@
 ;; easily move picture-in-picture frames around the screen and to
 ;; toggle playing and pausing video windows.
 
+;; TODO:
+;;
+;; Window Configs:
+;; * Setting and restoring window position saves
+;;
+;; Multiple floating windows
+;; * Currently, all the --get functions return one floating window when multiple could be possible.
+
 ;;; Code:
 (require 'xcb)
 (require 'cl) ;; pushnew
@@ -287,6 +295,7 @@ JUNK is discarded."
   (interactive)
   (ignore junk)
   (when (exwm-floatmode--get-floating-frame)
+    (select-frame exwm-workspace--current) ;; grab workspace, not floating win
     (let* ((floater (get-buffer-create "EXWM FloatMode"))
            (newwin (popwin:popup-buffer floater
                                         :height 2 :position 'bottom
