@@ -80,10 +80,61 @@ visible workspace, or integer pixel values."
   :group 'exwm-floatmode)
 
 (defcustom exwm-floatmode-border
-  '(:stationary ("navy" . 1) :moving ("maroon" . 2))
+  '(:stationary ("navy" . 1) :moving ("maroon" . 3))
   "Floating border and width when stationary and during move-mode."
   :type 'plist
   :group 'exwm-floatmode)
+
+(defcustom exwm-floatmode-custom-modes
+  '(;; Move window default
+    (:title nil :common-fn exwm-floatmode-move-direction
+            :keyargs ((\S-left . 'left)
+                      (\S-right . 'right)
+                      (\S-up .  'up)
+                      (\S-down . 'down)))
+    ;; Move window 100
+    (:title nil :common-fn exwm-floatmode-move-direction
+            :keyargs ((\S-\M-left . ('left 100))
+                      (\S-\M-right . ('right 100))
+                      (\S-\M-up . ('up 100))
+                      (\S-\M-down . ('down 100))))
+    ;; Resize window
+    (:title nil :common-fn exwm-floatmode-resize-delta
+            :keyargs ((\M-left . (-20 nil))
+                      (\M-right . (20 nil))
+                      (\M-up . (nil -20))
+                      (\M-down . (nil 20))))
+    ;; Common controls
+    (:title nil :keyargs ((?s . (call-interactively #'exwm-floatmode-position-save))
+                          (?q . (exwm-floatmode--move-mode-exit))
+                          (\S-? . (exwm-floatmode-forcetoggle-video))
+                          (return . (exwm-floatmode--move-mode-exit))))
+    ;; Video-specific controls
+    (:title "Picture-in-Picture" :common-fn exwm-floatmode--send-key
+            :keyargs (left right up down ? )))
+  "A list of sparse keymaps to be loaded when TITLE matches the ``exwm-title'' for the floating window.
+
+If TITLE is nil, then the mode is enabled on all floating windows.
+The bindings are set by binding the car of each KEYARGS to the COMMON-FN plus the cdr of each KEYARGS.
+
+e.g.1 (:title \"Foo\" :common-fn #'fun1 :keyargs '((a 9)))
+         becomes (([a] . (fun1 a))
+                  ([9] . (fun1 9)))
+
+e.g.2 (:title \"Bar\" :common-fn #'fun2 :keyargs '((a . (b 22)) (9 . (123 m)) (left . (1 1))))
+         becomes (([a] . (fun2 b 22))
+                  ([9] . (fun2 123 m))
+                  ([left] . (fun2 1 1)))
+
+e.g.3 (:title \"Baz\" :common-fn nil :keyargs '((a . (fun1 1 22)) (b . (fun2 f g))))
+         becomes (([a] . (fun1 1 22))
+                  ([b] . (fun2 f g)))
+
+Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysyms found in ``xcb-keysyms.el''."
+  :type 'list
+  :group 'exwm-floatmode)
+
+
 
 (defvar exwm-floatmode-position-configs
   '((:key [1] :title nil :x 0 :y 0 :width 400 :height 300)
@@ -141,55 +192,6 @@ visible workspace, or integer pixel values."
               (setq exwm-floatmode-position-configs (car tmpvar))
             (user-error "Cannot parse"))))
     (user-error "``exwm-floatmode-position-file'' not set")))
-
-(defcustom exwm-floatmode-custom-modes
-  '(;; Move window default
-    (:title nil :common-fn exwm-floatmode-move-direction
-            :keyargs ((\S-left . 'left)
-                      (\S-right . 'right)
-                      (\S-up .  'up)
-                      (\S-down . 'down)))
-    ;; Move window 100
-    (:title nil :common-fn exwm-floatmode-move-direction
-            :keyargs ((\S-\M-left . ('left 100))
-                      (\S-\M-right . ('right 100))
-                      (\S-\M-up . ('up 100))
-                      (\S-\M-down . ('down 100))))
-    ;; Resize window
-    (:title nil :common-fn exwm-floatmode-resize-delta
-            :keyargs ((\M-left . (-20 nil))
-                      (\M-right . (20 nil))
-                      (\M-up . (nil -20))
-                      (\M-down . (nil 20))))
-    ;; Common controls
-    (:title nil :keyargs ((?s . (call-interactively #'exwm-floatmode-position-save))
-                          (?q . (exwm-floatmode--move-mode-exit))
-                          (\S-? . (exwm-floatmode-forcetoggle-video))
-                          (return . (exwm-floatmode--move-mode-exit))))
-    ;; Video-specific controls
-    (:title "Picture-in-Picture" :common-fn exwm-floatmode--send-key
-            :keyargs (left right up down ? )))
-  "A list of sparse keymaps to be loaded when TITLE matches the ``exwm-title'' for the floating window.
-
-If TITLE is nil, then the mode is enabled on all floating windows.
-The bindings are set by binding the car of each KEYARGS to the COMMON-FN plus the cdr of each KEYARGS.
-
-e.g.1 (:title \"Foo\" :common-fn #'fun1 :keyargs '((a 9)))
-         becomes (([a] . (fun1 a))
-                  ([9] . (fun1 9)))
-
-e.g.2 (:title \"Bar\" :common-fn #'fun2 :keyargs '((a . (b 22)) (9 . (123 m)) (left . (1 1))))
-         becomes (([a] . (fun2 b 22))
-                  ([9] . (fun2 123 m))
-                  ([left] . (fun2 1 1)))
-
-e.g.3 (:title \"Baz\" :common-fn nil :keyargs '((a . (fun1 1 22)) (b . (fun2 f g))))
-         becomes (([a] . (fun1 1 22))
-                  ([b] . (fun2 f g)))
-
-Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysyms found in ``xcb-keysyms.el''."
-  :type 'list
-  :group 'exwm-floatmode)
 
 (defun exwm-floatmode--convert2keymap (entry &optional map)
   "Convert an ENTRY in ``exwm-floatmode-custom-modes'' and to keymap MAP."
