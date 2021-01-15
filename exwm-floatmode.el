@@ -138,100 +138,98 @@ visible workspace, or integer pixel values."
 (defcustom exwm-floatmode-custom-modes
   '(;; Move window default
     (:title nil :common-fn exwm-floatmode-move-direction
-            :keyargs (left right up down SPC))
+            :keyargs (left right up down))
     ;; Move window 100
     (:title nil :common-fn exwm-floatmode-move-direction
-            :keyargs ((\S-left . (left 100))
-                      (\S-right . (right 100))
-                      (\S-up . (up 100))
-                      (\S-down . (down 100))))
+            :keyargs ((\S-left . ('left 100))
+                      (\S-right . ('right 100))
+                      (\S-up . ('up 100))
+                      (\S-down . ('down 100))))
     ;; Resize window
     (:title nil :common-fn exwm-floatmode-resize-delta
             :keyargs ((\M-left . (-20 nil))
                       (\M-right . (20 nil))
                       (\M-up . (nil -20))
                       (\M-down . (nil 20))))
-    ;; Video controls
+    ;; Common controls
+    (:title nil :keyargs ((?s . (exwm-floatmode-position-save))
+                          (?q . (exwm-floatmode-move-mode -1))
+                          (\S-? . (exwm-floatmode-forcetoggle-video))
+                          (return . (exwm-floatmode-move-mode -1))))
+    ;; Video-specific controls
     (:title "Picture-in-Picture" :common-fn exwm-floatmode--send-key
-            :keyargs (left right up down SPC)))
+            :keyargs (left right up down ? )))
   "A list of sparse keymaps to be loaded when TITLE matches the ``exwm-title'' for the floating window.
 
-If TITLE is nil, then the mode is enabled on all floating
-windows. The bindings are set by binding the car of each KEYARGS to the COMMON-FN plus the cdr of each KEYARGS.
+If TITLE is nil, then the mode is enabled on all floating windows.
+The bindings are set by binding the car of each KEYARGS to the COMMON-FN plus the cdr of each KEYARGS.
 
-e.g.1 (:title \"Foo\" :common-fn #'barista :keyargs '((a 9)))
-         becomes (([a] . (barista a))
-                  ([9] . (barista 9)))
+e.g.1 (:title \"Foo\" :common-fn #'fun1 :keyargs '((a 9)))
+         becomes (([a] . (fun1 a))
+                  ([9] . (fun1 9)))
 
-e.g.2 (:title \"Bar\" :common-fn #'foofighter :keyargs '((a . (b 22)) (9 . (123 m)) (left . (1 1))))
-         becomes (([a] . (foofighter b 22))
-                  ([9] . (foofighter 123 m))
-                  ([left] . (foofighter 1 1)))
+e.g.2 (:title \"Bar\" :common-fn #'fun2 :keyargs '((a . (b 22)) (9 . (123 m)) (left . (1 1))))
+         becomes (([a] . (fun2 b 22))
+                  ([9] . (fun2 123 m))
+                  ([left] . (fun2 1 1)))
 
-e.g.3 (:title \"Baz\" :common-fn nil :keyargs '((a . (barista 1 22)) (b . (foofighter f g))))
-         becomes (([a] . (barista 1 22))
-                  ([b] . (foofighter f g)))
-"
+e.g.3 (:title \"Baz\" :common-fn nil :keyargs '((a . (fun1 1 22)) (b . (fun2 f g))))
+         becomes (([a] . (fun1 1 22))
+                  ([b] . (fun2 f g)))
+
+Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysyms found in ``xcb-keysyms.el''."
   :type 'list
   :group 'exwm-floatmode)
 
-
-(defun exwm-floatmode--convert2keymap (entry)
-  "Convert an entry in ``exwm-floatmode-custom-modes'' to a key map."
+(defun exwm-floatmode--convert2keymap (entry &optional map)
+  "Convert an ENTRY in ``exwm-floatmode-custom-modes'' and to keymap MAP."
   (let ((title (plist-get entry :title))
         (commonfn (plist-get entry :common-fn))
         (keyargs (plist-get entry :keyargs))
-        (map (make-sparse-keymap)))
-    ;;(set-keymap-parent map <theirmap>)
-    (--map (let* ((key (if (eq (type-of it) 'cons) (car it) it))
-                  (skey [key])
-                  (args (if (eq (type-of it) 'cons) (cdr it)))
-                  (func (if (not args) ;; only key
-                            `(,commonfn ,key)
-                          `(,commonfn ,@args))))
-             (define-key map skey func))
+        (map (or map (make-sparse-keymap))))
+    (--map (let* ((_key (if (eq (type-of it) 'cons) (car it) it))
+                  (_args (if (eq (type-of it) 'cons) (cdr it)))
+                  (func (if commonfn
+                            (if (not _args) ;; only key
+                                `(,commonfn ',_key)
+                              `(,commonfn ,@_args))
+                          ;; no initial function
+                          (if (not _args)
+                              `(',_key)
+                            `(,@_args))))
+                  (titlefunc `(lambda () (interactive)
+                                (if (or (not ,title) ;; no title, or a direct match
+                                        (string= (with-current-buffer
+                                                     (exwm-floatmode--get-floating-buffer)
+                                                   exwm-title)
+                                                 ,title))
+                                    ,func)))
+                  (press (cond ((eq _key 'SPC) `[? ])
+                               (t `[,_key]))))
+             (define-key map press titlefunc))
            keyargs)
     map))
-;;(unintern 'exwm-floatmode-move-mode)
+
+;; C-M-x to redefine this
 (define-minor-mode exwm-floatmode-move-mode
-  "The minor mode for manipulating the exwm floating frame. Works only when called from non-floating frame, and it should therefore only be called from the ``exwm-floatmode-minor-mode'' function, which ensures this."
+  "The minor mode for manipulating the exwm floating frame. Works only when called from non-floating frame, and it should therefore only be called from the ``exwm-floatmode-minor-mode'' function, which ensures this. NEVER CALL THIS MODE DIRECTLY"
   :init-value nil
   :lighter " FloatMode"
   :keymap
-  ;; left, right, up, down, space all likely bound to video controls
-  '(([\S-M-left] . (lambda () (interactive) (exwm-floatmode--send-key 'left)))
-    ([\S-M-right] . (lambda () (interactive) (exwm-floatmode--send-key 'right)))
-    ([\S-M-up] . (lambda () (interactive) (exwm-floatmode--send-key 'up)))
-    ([\S-M-down] . (lambda () (interactive) (exwm-floatmode--send-key 'down)))
-    ([SPC] . (lambda () (interactive) (exwm-floatmode--send-key 'SPC)))
-    ([left] . (lambda () (interactive) (exwm-floatmode-move-direction 'left)))
-    ([right] . (lambda () (interactive) (exwm-floatmode-move-direction 'right)))
-    ([up] . (lambda () (interactive) (exwm-floatmode-move-direction 'up)))
-    ([down] . (lambda () (interactive) (exwm-floatmode-move-direction 'down)))
-    ([\S-M-left] . (lambda () (interactive) (exwm-floatmode-move-direction 'left 100)))
-    ([\S-M-right] . (lambda () (interactive) (exwm-floatmode-move-direction 'right 100)))
-    ([\S-M-up] . (lambda () (interactive) (exwm-floatmode-move-direction 'up 100)))
-    ([\S-M-down] . (lambda () (interactive) (exwm-floatmode-move-direction 'down 100)))
-    ([?\S- ] . exwm-floatmode-forcetoggle-video)  ;; Force toggle.
-    ([\M-left] . (lambda () (interactive) (exwm-floatmode-resize-delta -20 nil)))
-    ([\M-right] . (lambda () (interactive) (exwm-floatmode-resize-delta 20 nil)))
-    ([\M-up] . (lambda () (interactive) (exwm-floatmode-resize-delta nil -20)))
-    ([\M-down] . (lambda () (interactive) (exwm-floatmode-resize-delta nil 20)))
-    ([s] . exwm-floatmode-position-save)
-    ([q] . exwm-floatmode-move-mode) ;; quit
-    ([return] . exwm-floatmode-move-mode)) ;; quit
+  (let ((map (make-sparse-keymap)))
+    (dolist (entry exwm-floatmode-custom-modes map)
+      (exwm-floatmode--convert2keymap entry map)))
   (exwm-floatmode--initialise-mm))
-
 
 (defun exwm-floatmode--send-key (keyseq)
   "Send KEYSEQ to floating window."
   (exwm-floatmode--do-floatfunc-and-restore
    (lambda (c f)
-     (exwm-input--fake-key keyseq))))
+     (progn (exwm-input--fake-key keyseq)
+            (select-window c)))))
 
 (defun exwm-floatmode--move-mode-exit ()
-  "Functions to run on move-mode exit. Hooked to
-``exwm-floating-exit-hook''."
+  "Functions to run on move-mode exit.  Hooked to ``exwm-floating-exit-hook''."
   (if (get-buffer "EXWM FloatMode")
       (kill-buffer "EXWM FloatMode"))
   ;; Due to this mode having a tendency to bleed into other buffers
