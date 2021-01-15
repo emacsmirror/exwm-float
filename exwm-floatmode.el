@@ -35,6 +35,9 @@
 ;;
 ;; Multiple floating windows
 ;; * Currently, all the --get functions return one floating window when multiple could be possible.
+;;
+;; README
+;; * Write up with live demo
 
 ;;; Code:
 (require 'xcb)
@@ -42,6 +45,7 @@
 (require 'exwm-core)
 (require 'exwm-input)
 (require 'exwm-floating)
+(require 'dash)
 
 (defgroup exwm-floatmode nil
   "Customization group for picture-in-picture."
@@ -112,11 +116,6 @@ visible workspace, or integer pixel values."
     (exwm-floatmode--position-store posinfo)))
     ;;(exwm-floatmode--refresh-minor-mode)))
 
-(defun exwm-floatmode--refresh-minor-mode ()
-  "Refresh the minor mode so that the new bindings from ``exwm-floatmode-position-configs'' take effect."
-  (exwm-floatmode-minor-mode -1)
-  (exwm-floatmode-minor-mode 1))
-
 (defun exwm-floatmode--position-store (posinfo)
   "Store the following POSINFO into the
 ``exwm-floatmode-position-configs'' variable, and sync with the
@@ -146,13 +145,16 @@ visible workspace, or integer pixel values."
 (defcustom exwm-floatmode-custom-modes
   '(;; Move window default
     (:title nil :common-fn exwm-floatmode-move-direction
-            :keyargs (left right up down))
+            :keyargs ((\S-left . 'left)
+                      (\S-right . 'right)
+                      (\S-up .  'up)
+                      (\S-down . 'down)))
     ;; Move window 100
     (:title nil :common-fn exwm-floatmode-move-direction
-            :keyargs ((\S-left . ('left 100))
-                      (\S-right . ('right 100))
-                      (\S-up . ('up 100))
-                      (\S-down . ('down 100))))
+            :keyargs ((\S-\M-left . ('left 100))
+                      (\S-\M-right . ('right 100))
+                      (\S-\M-up . ('up 100))
+                      (\S-\M-down . ('down 100))))
     ;; Resize window
     (:title nil :common-fn exwm-floatmode-resize-delta
             :keyargs ((\M-left . (-20 nil))
@@ -160,10 +162,10 @@ visible workspace, or integer pixel values."
                       (\M-up . (nil -20))
                       (\M-down . (nil 20))))
     ;; Common controls
-    (:title nil :keyargs ((?s . (exwm-floatmode-position-save))
-                          (?q . (exwm-floatmode-move-mode -1))
+    (:title nil :keyargs ((?s . (call-interactively #'exwm-floatmode-position-save))
+                          (?q . (exwm-floatmode--move-mode-exit))
                           (\S-? . (exwm-floatmode-forcetoggle-video))
-                          (return . (exwm-floatmode-move-mode -1))))
+                          (return . (exwm-floatmode--move-mode-exit))))
     ;; Video-specific controls
     (:title "Picture-in-Picture" :common-fn exwm-floatmode--send-key
             :keyargs (left right up down ? )))
@@ -205,6 +207,7 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
                           (if (not _args)
                               `(',_key)
                             `(,@_args))))
+                  ;; TODO: Find a cleaner way to write the above
                   (titlefunc `(lambda () (interactive)
                                 (if (or (not ,title) ;; no title, or a direct match
                                         (string= (with-current-buffer
@@ -227,48 +230,31 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
   (let ((map (make-sparse-keymap)))
     (dolist (entry exwm-floatmode-custom-modes map)
       (exwm-floatmode--convert2keymap entry map)))
-  (exwm-floatmode--initialise-mm))
+  ;; init
+  (let ((colwid (plist-get exwm-floatmode-border
+                           (if exwm-floatmode-move-mode :moving :stationary))))
+    (customize-set-variable 'exwm-floating-border-color (car colwid))
+    (customize-set-variable 'exwm-floating-border-width (cdr colwid))))
+
+(defun exwm-floatmode--refresh-minor-mode ()
+  "Refresh the minor mode so that the new bindings from ``exwm-floatmode-position-configs'' take effect."
+  ;;(exwm-floatmode-minor-mode -1)
+  ;;(exwm-floatmode-minor-mode 1)
+  (exwm-floatmode--move-mode-exit)
+  (exwm-floatmode-minor-mode))
+
 
 (defun exwm-floatmode--send-key (keyseq)
   "Send KEYSEQ to floating window."
   (exwm-floatmode--do-floatfunc-and-restore
-   (lambda (c f)
-     (progn (exwm-input--fake-key keyseq)
-            (select-window c)))))
+   (lambda (c f) (exwm-input--fake-key keyseq))))
 
 (defun exwm-floatmode--move-mode-exit ()
   "Functions to run on move-mode exit.  Hooked to ``exwm-floating-exit-hook''."
-  (if (get-buffer "EXWM FloatMode")
-      (kill-buffer "EXWM FloatMode"))
-  ;; Due to this mode having a tendency to bleed into other buffers
-  ;; we must ensure that all buffers have this mode turned off on exit.
-  (dolist (buff (buffer-list)) ;; REALLY?
-    (with-current-buffer buff
-      (exwm-floatmode-move-mode -1))))
-
-
-(defun exwm-floatmode--initialise-mm ()
-  "Initialise ``exwm-floatmode-move-mode''."
-  (when exwm--floating-frame
-    ;; For some reason the floating window does not respond to mode
-    ;; commands, and when enabled on the buffer it shifts the buffer
-    ;; out of the floating frame, so instead we switch to the previous
-    ;; window and try again.
-    ;;(exwm-floatmode-move-mode -1)
-    ;;(other-window -1 t) ;; t -- all frames
-    ;;(exwm-floatmode-move-mode -1)) ;; enable in new window
-    (user-error "Don't run on the floating window!"))
-  (let* ((mode (if exwm-floatmode-move-mode :moving :stationary))
-         (vald (plist-get exwm-floatmode-border mode)))
-    (customize-set-variable 'exwm-floating-border-color (car vald))
-    (customize-set-variable 'exwm-floating-border-width (cdr vald))
-    (if exwm-floatmode-move-mode
-        ;; Restore other bindings from file
-        (ignore nil)
-        ;;(progn (exwm-floatmode--position-restore)
-        ;;       (exwm-floatmode--position-expandbindings))
-      ;; On exit
-      (exwm-floatmode--move-mode-exit))))
+  (remove-hook 'quit-window-hook #'exwm-floatmode--move-mode-exit)
+  (when (get-buffer "EXWM FloatMode")
+    (exwm-floatmode-move-mode -1)
+    (kill-buffer "EXWM FloatMode")))
 
 
 (defun exwm-floatmode--position-expandbindings ()
@@ -291,7 +277,7 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
 (defun exwm-floatmode-minor-mode (&optional junk)
   "Parent caller for ``exwm-floatmode-move-mode''.
 Selects the floating window and sets the minor mode to STATE, 1 for on, anything else for off.
-JUNK is discarded."
+Event JUNK is discarded."
   (interactive)
   (ignore junk)
   (when (exwm-floatmode--get-floating-frame)
@@ -304,6 +290,7 @@ JUNK is discarded."
         (add-hook 'quit-window-hook #'exwm-floatmode--move-mode-exit)
         (setq-local buffer-read-only t)
         (exwm-floatmode-move-mode 1)))))
+
 
 (defvar exwm-floatmode--float-buffer nil
   "Buffer currently showed in the floating frame.")
@@ -345,7 +332,7 @@ If the floating window is already selected, then just run FUNC."
         (float-win (exwm-floatmode--get-floating-window)))
     (unless float-win
       ;; Disable mode-mode if it's enabled
-      (if exwm-floatmode-move-mode (exwm-floatmode-move-mode -1))
+      (if exwm-floatmode-move-mode (exwm-floatmode--move-mode-exit))
       (user-error "No floating window available"))
     (if (eq curr-win float-win)
         (funcall func curr-win float-win)
