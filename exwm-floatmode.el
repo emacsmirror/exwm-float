@@ -58,8 +58,8 @@ This can be found by invoking ``exwm-title'' on a window."
   :group 'exwm-floatmode)
 
 (defcustom exwm-floatmode-modify-amount
-  '(:move 20 :resize 50)
-  "Incremental amounts to :MOVE or :RESIZE the floating frame for the minor mode."
+  '(:move-slow 20 :move-fast 100 :resize 50)
+  "Incremental pixel amounts to MOVE-SLOW, MOVE-FAST or RESIZE the floating frame for the minor mode."
   :type 'plist
   :group 'exwm-floatmode)
 
@@ -429,9 +429,13 @@ It assumes the first tabbed position would yield the play/pause button."
      (exwm-input--fake-key 'S-tab)))) ;; reset button position
 
 (defun exwm-floatmode-move-direction (direction &optional amount)
-  "Move floating frame by AMOUNT in DIRECTION symbol: left, right, up, down."
+  "Move floating frame by AMOUNT in DIRECTION symbol: left, right, up, down.
+
+If AMOUNT is nil then use the :move-slow amount, if t then use the :move-fast amount, otherwise assume a pixel increment."
   (interactive (list (read-key "Direction ")))
-  (let ((amount (or amount (plist-get exwm-floatmode-modify-amount :move))))
+  (let ((amount (cond ((not amount) (plist-get exwm-floatmode-modify-amount :move-slow))
+                      ((booleanp amount) (plist-get exwm-floatmode-modify-amount :move-fast))
+                      (t amount))))
     (exwm-floatmode--do-floatfunc-and-restore
      (lambda (a b)
        (cond ((eq direction 'left) (exwm-floating-move (- amount) 0))
