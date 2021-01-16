@@ -31,7 +31,8 @@
 ;; TODO:
 ;;
 ;; Window Configs:
-;; * Setting and restoring window position saves
+;; * Setting window position saves (restoring now works)
+;; * Refreshing the minor-mode map
 ;;
 ;; Multiple floating windows
 ;; * Currently, all the --get functions return one floating window when multiple could be possible.
@@ -41,7 +42,6 @@
 
 ;;; Code:
 (require 'xcb)
-(require 'cl) ;; pushnew
 (require 'exwm-core)
 (require 'exwm-input)
 (require 'exwm-floating)
@@ -63,20 +63,22 @@ This can be found by invoking ``exwm-title'' on a window."
   :type 'plist
   :group 'exwm-floatmode)
 
-(defcustom exwm-floatmode-geometry
-  '(x 0.6 y 0.05 width 600 height 500)
-  "Geometry for the floating window when spawned. Used by the
-``exwm-floatmode-setup'' function. Units can be a fraction of the
-visible workspace, or integer pixel values."
-  :type 'alist
-  :group 'exwm-floatmode)
+(defcustom exwm-floatmode-window-defaults
+  '((:title nil ;;"Picture-in-Picture"
+     :geometry '(x 0.6 y 0.05 width 600 height 500)
+     :decoration  '(floating-mode-line nil
+                    tiling-mode-line nil
+                    floating-header-line nil
+                    tiling-header-line nil
+                    char-mode nil)))
+  "Default window geometries and decorations for the spawned floating window.
+Completely overrides the ``exwm-manage-configurations'' custom variable.
 
-(defcustom exwm-floatmode-decorations
-  '(floating-mode-line nil floating-header-line nil
-                       tiling-header-line nil tiling-mode-line nil
-                       char-mode nil)
-  "Decorations for the floating window when spawned."
-  :type 'alist
+Each config will be applied to the matching floating window with TITLE.
+If TITLE is nil, then it matches all.  Note that specifying nil for certain
+options is not the same as leaving them out.  See ``exwm-manage-configurations''
+for more information."
+  :type 'list ;; TODO: Specify the type format better, see the above variable for more info.
   :group 'exwm-floatmode)
 
 (defcustom exwm-floatmode-border
@@ -88,16 +90,16 @@ visible workspace, or integer pixel values."
 (defcustom exwm-floatmode-custom-modes
   '(;; Move window default
     (:title nil :common-fn exwm-floatmode-move-direction
-            :keyargs ((\S-left . 'left)
-                      (\S-right . 'right)
-                      (\S-up .  'up)
-                      (\S-down . 'down)))
+            :keyargs ((\S-left . ('left))
+                      (\S-right . ('right))
+                      (\S-up .  ('up))
+                      (\S-down . ('down))))
     ;; Move window 100
     (:title nil :common-fn exwm-floatmode-move-direction
-            :keyargs ((\S-\M-left . ('left 100))
-                      (\S-\M-right . ('right 100))
-                      (\S-\M-up . ('up 100))
-                      (\S-\M-down . ('down 100))))
+            :keyargs ((\S-\M-left . ('left t))
+                      (\S-\M-right . ('right t))
+                      (\S-\M-up . ('up t))
+                      (\S-\M-down . ('down t))))
     ;; Resize window
     (:title nil :common-fn exwm-floatmode-resize-delta
             :keyargs ((\M-left . (-20 nil))
@@ -106,9 +108,9 @@ visible workspace, or integer pixel values."
                       (\M-down . (nil 20))))
     ;; Common controls
     (:title nil :keyargs ((?s . (call-interactively #'exwm-floatmode-position-save))
-                          (?q . (exwm-floatmode--move-mode-exit))
+                          (?q . (exwm-floatmode--inner-mode-exit))
                           (\S-? . (exwm-floatmode-forcetoggle-video))
-                          (return . (exwm-floatmode--move-mode-exit))))
+                          (return . (exwm-floatmode--inner-mode-exit))))
     ;; Video-specific controls
     (:title "Picture-in-Picture" :common-fn exwm-floatmode--send-key
             :keyargs (left right up down ? )))
@@ -133,8 +135,6 @@ e.g.3 (:title \"Baz\" :common-fn nil :keyargs '((a . (fun1 1 22)) (b . (fun2 f g
 Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysyms found in ``xcb-keysyms.el''."
   :type 'list
   :group 'exwm-floatmode)
-
-
 
 (defvar exwm-floatmode-position-configs
   '((:key [1] :title nil :x 0 :y 0 :width 400 :height 300)
@@ -349,19 +349,19 @@ If the floating window is already selected, then just run FUNC."
   (interactive)
   ;; we use customize-set-variable because it triggers the :set function
   (setq exwm-manage-configurations nil)
-  (customize-set-variable exwm-manage-configurations
-                          (push
-                           `((equal exwm-title exwm-floatmode-title)
-                             floating t
-                             ,@exwm-floatmode-decorations
-                             ,@exwm-floatmode-geometry)
-                           exwm-manage-configurations))
-  ;; Setup: disable the tab-bar in this frame, launch move-mode
-  ;; Exit: close the minor-mode
+  (dolist (config exwm-floatmode-window-defaults)
+    (let* ((title (plist-get config :title))
+           (geom (plist-get config :geometry))
+           (decor (plist-get config :decoration))
+           (newentry `((equal exwm-title ,title) ,@geom ,@decor)))
+      (add-to-list 'exwm-manage-configurations newentry)))
+  ;; onsetup, disable the tab-bar in this frame
   (add-hook 'exwm-floating-setup-hook
-            #'exwm-floatmode--hide-tab-bar-in-floating-frame)
-  ;;(add-hook 'exwm-floating-setup-hook #'exwm-floatmode-minor-mode)
-  (add-hook 'exwm-floating-exit-hook #'exwm-floatmode--move-mode-exit))
+            (lambda () (interactive)
+              (set-frame-parameter (exwm-floatmode--get-floating-frame)
+                                   'tab-bar-lines 0)))
+  ;; onexit, close the minor-mode
+  (add-hook 'exwm-floating-exit-hook #'exwm-floatmode--inner-mode-exit))
 
 (defun exwm-floatmode--mouse-click (&optional pos button-num window-id)
   "Perform a mouse click at position POS.
