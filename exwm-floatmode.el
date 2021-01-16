@@ -236,20 +236,28 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
         (define-key map press titlefunc)))
     map))
 
+
+(defun exwm-floatmode-innermode--makemap ()
+  "Construct the ``exwm-floatmode-innermode'' map."
+  (let ((map (make-sparse-keymap)))
+    ;; Load user-mode bindings
+    (dolist (entry exwm-floatmode-custom-modes)
+      (exwm-floatmode--convert2keymap entry map))
+    ;; Load user-position bindings
+    (exwm-floatmode--position-expandbindings
+     (exwm-floatmode--position-restore) map)
     map))
 
 ;; C-M-x to redefine this
-(define-minor-mode exwm-floatmode-move-mode
+;;(unintern 'exwm-floatmode-innermode)
+(define-minor-mode exwm-floatmode-innermode
   "The minor mode for manipulating the exwm floating frame. Works only when called from non-floating frame, and it should therefore only be called from the ``exwm-floatmode-minor-mode'' function, which ensures this. NEVER CALL THIS MODE DIRECTLY"
   :init-value nil
   :lighter " FloatMode"
-  :keymap
-  (let ((map (make-sparse-keymap)))
-    (dolist (entry exwm-floatmode-custom-modes map)
-      (exwm-floatmode--convert2keymap entry map)))
   ;; init
   (let ((colwid (plist-get exwm-floatmode-border
-                           (if exwm-floatmode-move-mode :moving :stationary))))
+                           (if exwm-floatmode-innermode :moving :stationary))))
+    (setq exwm-floatmode-innermode-map (exwm-floatmode-innermode--makemap))
     (customize-set-variable 'exwm-floating-border-color (car colwid))
     (customize-set-variable 'exwm-floating-border-width (cdr colwid))))
 
@@ -257,7 +265,7 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
   "Refresh the minor mode so that the new bindings from ``exwm-floatmode-position-configs'' take effect."
   ;;(exwm-floatmode-minor-mode -1)
   ;;(exwm-floatmode-minor-mode 1)
-  (exwm-floatmode--move-mode-exit)
+  (exwm-floatmode--inner-mode-exit)
   (exwm-floatmode-minor-mode))
 
 
@@ -266,20 +274,19 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
   (exwm-floatmode--do-floatfunc-and-restore
    (lambda (c f) (exwm-input--fake-key keyseq))))
 
-(defun exwm-floatmode--move-mode-exit ()
+(defun exwm-floatmode--inner-mode-exit ()
   "Functions to run on move-mode exit.  Hooked to ``exwm-floating-exit-hook''."
-  (remove-hook 'quit-window-hook #'exwm-floatmode--move-mode-exit)
+  (remove-hook 'quit-window-hook #'exwm-floatmode--inner-mode-exit)
+  (remove-hook 'next-error-hook #'exwm-floatmode--inner-mode-exit)
   (when (get-buffer "EXWM FloatMode")
-    (exwm-floatmode-move-mode -1)
+    (exwm-floatmode-innermode -1)
     (kill-buffer "EXWM FloatMode")))
-
 
 (defvar exwm-floatmode--prebuffer nil
   "Window before minor-mode was called, to be restored on exit.")
 
-
 (defun exwm-floatmode-minor-mode (&optional junk)
-  "Parent caller for ``exwm-floatmode-move-mode''.
+  "Parent caller for ``exwm-floatmode-innermode''.
 Selects the floating window and sets the minor mode to STATE, 1 for on, anything else for off.
 Event JUNK is discarded."
   (interactive)
@@ -291,9 +298,10 @@ Event JUNK is discarded."
                                         :height 2 :position 'bottom
                                         :dedicated t :stick t :tail t)))
       (with-current-buffer "EXWM FloatMode"
-        (add-hook 'quit-window-hook #'exwm-floatmode--move-mode-exit)
+        (add-hook 'quit-window-hook #'exwm-floatmode--inner-mode-exit)
+        (add-hook 'next-error-hook #'exwm-floatmode--inner-mode-exit)
         (setq-local buffer-read-only t)
-        (exwm-floatmode-move-mode 1)))))
+        (exwm-floatmode-innermode 1)))))
 
 
 (defvar exwm-floatmode--float-buffer nil
@@ -323,12 +331,6 @@ If not found or currently active, search for it and update it."
   (--> (exwm-floatmode--get-floating-window)
        (if it (window-frame it))))
 
-(defun exwm-floatmode--hide-tab-bar-in-floating-frame ()
-  "Hide the tab-bar mode in the floating frame.
-Added to the ``after-make-frame-functions'' hook."
-  (set-frame-parameter (exwm-floatmode--get-floating-frame)
-                       'tab-bar-lines 0))
-
 (defun exwm-floatmode--do-floatfunc-and-restore (func)
   "Select the floating window, perform FUNC and then restore the current window.
 If the floating window is already selected, then just run FUNC."
@@ -336,7 +338,7 @@ If the floating window is already selected, then just run FUNC."
         (float-win (exwm-floatmode--get-floating-window)))
     (unless float-win
       ;; Disable mode-mode if it's enabled
-      (if exwm-floatmode-move-mode (exwm-floatmode--move-mode-exit))
+      (if exwm-floatmode-innermode (exwm-floatmode--inner-mode-exit))
       (user-error "No floating window available"))
     (if (eq curr-win float-win)
         (funcall func curr-win float-win)
