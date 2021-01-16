@@ -237,8 +237,7 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
     map))
 
 
-(defun exwm-floatmode-innermode--makemap ()
-  "Construct the ``exwm-floatmode-innermode'' map."
+(defvar exwm-floatmode-innermode-map
   (let ((map (make-sparse-keymap)))
     ;; Load user-mode bindings
     (dolist (entry exwm-floatmode-custom-modes)
@@ -246,7 +245,8 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
     ;; Load user-position bindings
     (exwm-floatmode--position-expandbindings
      (exwm-floatmode--position-restore) map)
-    map))
+    map)
+  "Construct the ``exwm-floatmode-innermode'' map.")
 
 ;; C-M-x to redefine this
 ;;(unintern 'exwm-floatmode-innermode)
@@ -257,9 +257,11 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
   ;; init
   (let ((colwid (plist-get exwm-floatmode-border
                            (if exwm-floatmode-innermode :moving :stationary))))
-    (setq exwm-floatmode-innermode-map (exwm-floatmode-innermode--makemap))
     (customize-set-variable 'exwm-floating-border-color (car colwid))
-    (customize-set-variable 'exwm-floating-border-width (cdr colwid))))
+    (customize-set-variable 'exwm-floating-border-width (cdr colwid))
+    (if exwm-floatmode-innermode
+        ;; redefine this variable when the mode is active
+        (eval-defun 'exwm-floatmode-innermode-map))))
 
 (defun exwm-floatmode--refresh-minor-mode ()
   "Refresh the minor mode so that the new bindings from ``exwm-floatmode-position-configs'' take effect."
