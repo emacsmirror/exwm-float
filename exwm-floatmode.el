@@ -179,7 +179,7 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
           (write-file exwm-floatmode-position-file)))))
 
 (defun exwm-floatmode--position-restore ()
-  "Set the ``exwm-floatmode-position-configs'' variable from the contents of the ``exwm-floatmode-position-file''."
+  "Set the ``exwm-floatmode-position-configs'' variable from the contents of the ``exwm-floatmode-position-file'' and return it (to be fed directly into ``exwm-floatmode--position-expandbindings'')."
   (if exwm-floatmode-position-file
       (with-temp-buffer
         (unless (file-exists-p exwm-floatmode-position-file)
@@ -193,34 +193,49 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
             (user-error "Cannot parse"))))
     (user-error "``exwm-floatmode-position-file'' not set")))
 
+(defun exwm-floatmode--position-expandbindings (position-config map)
+  "Expand the bindings from POSITION-CONFIG (read from ``exwm-floatmode--position-restore'' into the keymap MAP, and check for conflicts."
+  (dolist (binding position-config)
+    (if (string-match " undefined" (describe-key-briefly [a]))
+        (let* ((key (plist-get binding :key))
+               (title (plist-get binding :title))
+               (x (plist-get binding :x)) (y (plist-get binding :y))
+               (w (plist-get binding :width)) (h (plist-get binding :height))
+               (func `(lambda () (interactive)
+                        (exwm-floatmode-move ,x ,y ,w ,h ,title))))
+          (define-key map key func))
+      (user-error "%s is already set" binding))))
+
 (defun exwm-floatmode--convert2keymap (entry &optional map)
   "Convert an ENTRY in ``exwm-floatmode-custom-modes'' and to keymap MAP."
   (let ((title (plist-get entry :title))
         (commonfn (plist-get entry :common-fn))
         (keyargs (plist-get entry :keyargs))
         (map (or map (make-sparse-keymap))))
-    (--map (let* ((_key (if (eq (type-of it) 'cons) (car it) it))
-                  (_args (if (eq (type-of it) 'cons) (cdr it)))
-                  (func (if commonfn
-                            (if (not _args) ;; only key
-                                `(,commonfn ',_key)
-                              `(,commonfn ,@_args))
-                          ;; no initial function
-                          (if (not _args)
-                              `(',_key)
-                            `(,@_args))))
-                  ;; TODO: Find a cleaner way to write the above
-                  (titlefunc `(lambda () (interactive)
-                                (if (or (not ,title) ;; no title, or a direct match
-                                        (string= (with-current-buffer
-                                                     (exwm-floatmode--get-floating-buffer)
-                                                   exwm-title)
-                                                 ,title))
-                                    ,func)))
-                  (press (cond ((eq _key 'SPC) `[? ])
-                               (t `[,_key]))))
-             (define-key map press titlefunc))
-           keyargs)
+    (dolist (it keyargs)
+      (let* ((_key (if (eq (type-of it) 'cons) (car it) it))
+             (_args (if (eq (type-of it) 'cons) (cdr it)))
+             (func (if commonfn
+                       (if (not _args) ;; only key
+                           `(,commonfn ',_key)
+                         `(,commonfn ,@_args))
+                     ;; no initial function
+                     (if (not _args)
+                         `(',_key)
+                       `(,@_args))))
+             ;; TODO: Find a cleaner way to write the above
+             (titlefunc `(lambda () (interactive)
+                           (if (or (not ,title) ;; no title, or a direct match
+                                   (string= (with-current-buffer
+                                                (exwm-floatmode--get-floating-buffer)
+                                              exwm-title)
+                                            ,title))
+                               ,func)))
+             (press (cond ((eq _key 'SPC) `[? ])
+                          (t `[,_key]))))
+        (define-key map press titlefunc)))
+    map))
+
     map))
 
 ;; C-M-x to redefine this
@@ -258,19 +273,6 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
     (exwm-floatmode-move-mode -1)
     (kill-buffer "EXWM FloatMode")))
 
-
-(defun exwm-floatmode--position-expandbindings ()
-  "Expand the bindings from ``exwm-floatmode-position-configs'' into the current keymap, and check for conflicts."
-  (dolist (binding exwm-floatmode-position-configs)
-    (if (string-match " undefined" (describe-key-briefly [a]))
-        (let ((key (plist-get binding :key))
-              (title (plist-get binding :title))
-              (x (plist-get binding :x)) (y (plist-get binding :y))
-              (w (plist-get binding :width)) (h (plist-get binding :height)))
-          (define-key exwm-floatmode-move-mode key
-            (lambda () (interactive)
-              (exwm-floatmode--move x y w h title))))
-      (user-error "%s is already set" binding))))
 
 (defvar exwm-floatmode--prebuffer nil
   "Window before minor-mode was called, to be restored on exit.")
