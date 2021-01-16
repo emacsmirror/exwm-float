@@ -136,12 +136,16 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
   :type 'list
   :group 'exwm-floatmode)
 
-(defvar exwm-floatmode-position-configs
-  '((:key [1] :title nil :x 0 :y 0 :width 400 :height 300)
-    (:key [2] :title nil :x 100 :y 100 :width 400 :height 300)
-    (:key [3] :title nil :x 200 :y 200 :width 300 :height 400)
-    (:key [4] :title nil :x 300 :y 300 :width 300 :height 400))
-    "List of ``(:key K :title T :x X :y Y :width W :height H))'' elements, where K denotes the keyboard sequence used to place the floating window matching TITLE to position X and Y and resizing it to W and H.  If TITLE is nil, then apply to the first floating window.")
+(defcustom exwm-floatmode-position-configs
+  '((:name "NW" :key "1" :title nil :x 0 :y 0 :width 0.25 :height 0.25)
+    (:name "NE" :key "2" :title nil :x -0.25 :y 0 :width 0.25 :height 0.25)
+    (:name "SW" :key "3" :title nil :x 0 :y -0.25 :width 0.25 :height 0.25)
+    (:name "SE" :key "4" :title nil :x -0.25 :y -0.25 :width 0.25 :height 0.25)
+    (:name "Center" :key "5" :title nil :x 0.25 :y 0.25 :width 0.5 :height 0.5)
+    (:name "Hide" :key "h" :title nil :x 0.5 :y -1 :width 1 :height 1))
+  "List of ``(:name N :key K :title T :x X :y Y :width W :height H))'' elements, where K denotes the keyboard sequence used to place the floating window matching TITLE to position X and Y and resizing it to W and H.  All positions can be fractional (denoting proportion of screen space) or integers (denoting absolute pixels), and if negative are treated as offsets from the screen boundary.  If TITLE is nil, then apply to the first floating window.  The name N is ignored."
+  :type 'list
+  :group 'exwm-floatmode)
 
 (defvar exwm-floatmode-position-file
   (concat (file-name-as-directory user-emacs-directory) "float_positions.el")
