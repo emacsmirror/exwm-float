@@ -457,9 +457,20 @@ If AMOUNT is nil then use the :move-slow amount, if t then use the :move-fast am
                                                             'exwm-container)))
          (message "%s" (list :x x :y y :width: width :height height)))))))
 
+(defun exwm-floatmode--tolength (val dimension)
+  "If VAL is a positive integer or nil return it, if a positive float scale it by DIMENSION.
+If VAL is a negative integer then subtract it from DIMENSION.  If VAL is a negative float, then scale it by DIMENSION and subtract from DIMENSION.
+
+Used exclusively by ``exwm-floatmode-move''. "
+  (cond ((not val) val)
+        ((integerp val) (if (>= val 0) val
+                          (+ dimension val)))
+        (t (floor (if (>= val 0) (* val dimension)
+                    (+ dimension (* val dimension)))))))
+
 (defun exwm-floatmode-move (x y width height &optional title)
-  "Move and resize floating window to position X and Y and size WIDTH and HEIGHT, optionally only if the window TITLE."
-  (interactive)
+  "Move and resize floating window to position X and Y and size WIDTH and HEIGHT, optionally only if the window TITLE.  If any of the required arguments are fractional, then it scales itself to the size of the screen as determined by ``(x-display-pixel-height/width)''."
+  (interactive "nx: \nny: \nnwidth: \nnheight: ")
   (exwm-floatmode--do-floatfunc-and-restore
    (lambda (a b)
      (let ((floating-container (frame-parameter exwm--floating-frame
@@ -468,9 +479,15 @@ If AMOUNT is nil then use the :move-slow amount, if t then use the :move-fast am
        ;; if title and match → continue
        (if (not (or (not title) (string= title exwm-title)))
            (user-error "'%s' not a set config")
-         (exwm--set-geometry floating-container x y width height)
-         (exwm--set-geometry exwm--id x y width height)
-         (xcb:flush exwm--connection))))))
+         (let* ((pwt (x-display-pixel-width))
+                (pht (x-display-pixel-height))
+                (x (exwm-floatmode--tolength x pwt))
+                (y (exwm-floatmode--tolength y pht))
+                (width (exwm-floatmode--tolength width pwt))
+                (height (exwm-floatmode--tolength height pht)))
+           (exwm--set-geometry floating-container x y width height)
+           (exwm--set-geometry exwm--id x y width height)
+           (xcb:flush exwm--connection)))))))
 
 (defun exwm-floatmode-resize-delta (&optional deltax deltay)
   "Resize the floating window by DELTAX pixels right and DELTAY pixels down.
