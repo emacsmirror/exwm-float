@@ -206,7 +206,8 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
                (x (plist-get binding :x)) (y (plist-get binding :y))
                (w (plist-get binding :width)) (h (plist-get binding :height))
                (func `(lambda () (interactive)
-                        (exwm-floatmode-move ,x ,y ,w ,h ,title))))
+                        (exwm-floatmode-move ,x ,y ,w ,h ,title)
+                        (message "%s" binding))))
           (define-key map key func))
       (user-error "%s is already set" binding))))
 
