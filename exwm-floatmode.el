@@ -101,7 +101,7 @@ for more information."
                       (\M-up . (nil -20))
                       (\M-down . (nil 20))))
     ;; Common controls
-    (:title nil :keyargs ((?s . (call-interactively #'exwm-floatmode-position-save))
+    (:title nil :keyargs (;; (?s . (call-interactively #'exwm-floatmode-position-save))
                           (?q . (exwm-floatmode--inner-mode-exit))
                           (\S-? . (exwm-floatmode-forcetoggle-video))
                           (return . (exwm-floatmode--inner-mode-exit))))
@@ -141,10 +141,6 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
   :type 'list
   :group 'exwm-floatmode)
 
-(defvar exwm-floatmode-position-file
-  (concat (file-name-as-directory user-emacs-directory) "float_positions.el")
-  "File to store floating video positions.")
-
 (defun exwm-floatmode--frame-geometry ()
   "Get geometry of current frame."
   (with-slots (x y width height)
@@ -154,56 +150,78 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
            (frame-parameter exwm--floating-frame 'exwm-container)))
     (list :x x :y y :width width :height height)))
 
-(defun exwm-floatmode-position-save (hotkey)
-  "Save the current floating window position to a HOTKEY."
-  (interactive (list (read-key-sequence "Hotkey: ")))
-  (let* ((geometry (exwm-floatmode--do-floatfunc-and-restore
-                  (lambda (cwin fwin)
-                    (exwm-floatmode--frame-geometry))))
-         (posinfo (append (list :key hotkey :title exwm-title) geometry)))
-    (message "Binding: %s" posinfo)
-    (exwm-floatmode--position-store posinfo)))
-    ;;(exwm-floatmode--refresh-minor-mode)))
+;; --- BEGIN: Position Saving Functions ---
+;;
+;; These are disabled for now due to the issues with refreshing the keymap
+;;
+;; (defvar exwm-floatmode-position-file
+;;   (concat (file-name-as-directory user-emacs-directory) "float_positions.el")
+;;   "File to store floating video positions.")
+;;
+;; (defun exwm-floatmode-position-save (hotkey)
+;;   "Save the current floating window position to a HOTKEY."
+;;   (interactive (list (read-key-sequence "Hotkey: ")))
+;;   (let* ((geometry (exwm-floatmode--do-floatfunc-and-restore
+;;                   (lambda (cwin fwin)
+;;                     (exwm-floatmode--frame-geometry))))
+;;          (posinfo (append (list :key hotkey :title exwm-title) geometry)))
+;;     (message "Binding: %s" posinfo)
+;;     (exwm-floatmode--position-store posinfo)))
+;;     ;;(exwm-floatmode--refresh-minor-mode)))
 
-(defun exwm-floatmode--position-store (posinfo)
-  "Store the following POSINFO into the
-``exwm-floatmode-position-configs'' variable, and sync with the
-``exwm-floatmode-position-file''."
-  (when exwm-floatmode-position-configs
-    (pushnew posinfo exwm-floatmode-position-configs)
-    (if exwm-floatmode-position-configs
-        (with-temp-buffer
-          (insert (format "%s" exwm-floatmode-position-configs))
-          (write-file exwm-floatmode-position-file)))))
+;; (defun exwm-floatmode--position-store (posinfo)
+;;   "Store the following POSINFO into the
+;; ``exwm-floatmode-position-configs'' variable, and sync with the
+;; ``exwm-floatmode-position-file''."
+;;   (pushnew posinfo exwm-floatmode-position-configs)
+;;   (if exwm-floatmode-position-configs
+;;       (with-temp-buffer
+;;         (insert "(")
+;;         (dolist (elem exwm-floatmode-position-configs)
+;;           (let ((name (plist-get elem :name))
+;;                 (key (plist-get elem :key)) (title (plist-get elem :title))
+;;                 (x (plist-get elem :x)) (y (plist-get elem :y))
+;;                 (w (plist-get elem :width)) (h (plist-get elem :height)))
+;;             (if (eq 'string (type-of name)) (setq name (concat "\"" name "\"")))
+;;             (if (eq 'string (type-of key)) (setq key (concat "\"" key "\"")))
+;;             (if (eq 'string (type-of title)) (setq title (concat "\"" title "\"")))
+;;             ;; Probably an easier way to ensure that values which have quotes are quoted, but eh.
+;;             (insert (format "(:name %s :key %s :title %s :x %s :y %s :width %s :height %s)\n "
+;;                             name key title x y w h))))
+;;         (search-backward ")")
+;;         (insert ")")
+;;         (write-file exwm-floatmode-position-file))))
 
-(defun exwm-floatmode--position-restore ()
-  "Set the ``exwm-floatmode-position-configs'' variable from the contents of the ``exwm-floatmode-position-file'' and return it (to be fed directly into ``exwm-floatmode--position-expandbindings'')."
-  (if exwm-floatmode-position-file
-      (with-temp-buffer
-        (unless (file-exists-p exwm-floatmode-position-file)
-          (with-temp-buffer
-            (insert "")
-            (write-file exwm-floatmode-position-file)))
-        (insert-file-contents exwm-floatmode-position-file)
-        (let ((tmpvar (read-from-string (buffer-string))))
-          (if tmpvar
-              (setq exwm-floatmode-position-configs (car tmpvar))
-            (user-error "Cannot parse"))))
-    (user-error "``exwm-floatmode-position-file'' not set")))
+;; (defun exwm-floatmode--position-restore ()
+;;   "Set the ``exwm-floatmode-position-configs'' variable from the contents of the ``exwm-floatmode-position-file'' and return it (to be fed directly into ``exwm-floatmode--position-expandbindings'')."
+;;   (if exwm-floatmode-position-file
+;;       (with-temp-buffer
+;;         (unless (file-exists-p exwm-floatmode-position-file)
+;;           (with-temp-buffer
+;;             (insert "")
+;;             (write-file exwm-floatmode-position-file)))
+;;         (insert-file-contents exwm-floatmode-position-file)
+;;         (let ((tmpvar (read-from-string (--> (buffer-string) (if (equal it "") "nil" it)))))
+;;           (if (car tmpvar)
+;;               (setq exwm-floatmode-position-configs (car tmpvar))
+;;             (user-error "Cannot parse"))))
+;;     (user-error "``exwm-floatmode-position-file'' not set")))
 
-(defun exwm-floatmode--position-expandbindings (position-config map)
-  "Expand the bindings from POSITION-CONFIG (read from ``exwm-floatmode--position-restore'' into the keymap MAP, and check for conflicts."
-  (dolist (binding position-config)
-    (if (string-match " undefined" (describe-key-briefly [a]))
-        (let* ((key (plist-get binding :key))
-               (title (plist-get binding :title))
-               (x (plist-get binding :x)) (y (plist-get binding :y))
-               (w (plist-get binding :width)) (h (plist-get binding :height))
-               (func `(lambda () (interactive)
-                        (exwm-floatmode-move ,x ,y ,w ,h ,title)
-                        (message "%s" binding))))
-          (define-key map key func))
-      (user-error "%s is already set" binding))))
+;; (defun exwm-floatmode--position-expandbindings (position-config map)
+;;   "Expand the bindings from POSITION-CONFIG (read from ``exwm-floatmode--position-restore'' into the keymap MAP, and check for conflicts."
+;;   (dolist (binding position-config)
+;;     (if (string-match " undefined" (describe-key-briefly [a]))
+;;         (let* ((key (plist-get binding :key))
+;;                (title (plist-get binding :title))
+;;                (x (plist-get binding :x)) (y (plist-get binding :y))
+;;                (w (plist-get binding :width)) (h (plist-get binding :height))
+;;                (func `(lambda () (interactive)
+;;                         (exwm-floatmode-move ,x ,y ,w ,h ,title)
+;;                         (message "%s" binding))))
+;;           (define-key map key func))
+;;       (user-error "%s is already set" binding))))
+;;
+;; --- END: Position Saving Functions ---
 
 (defun exwm-floatmode--convert2keymap (entry &optional map)
   "Convert an ENTRY in ``exwm-floatmode-custom-modes'' and to keymap MAP."
