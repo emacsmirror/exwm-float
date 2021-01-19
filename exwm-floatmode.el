@@ -36,15 +36,14 @@
 ;;
 ;; Multiple floating windows
 ;; * Currently, all the --get functions return one floating window when multiple could be possible.
-;;
-;; README
-;; * Write up with live demo
 
 ;;; Code:
 (require 'xcb)
 (require 'exwm-core)
 (require 'exwm-input)
 (require 'exwm-floating)
+(require 'exwm-workspace)
+(require 'exwm-manage)
 (require 'dash)
 
 (defgroup exwm-floatmode nil
@@ -59,12 +58,12 @@
 
 (defcustom exwm-floatmode-frame-defaults
   '((:title nil ;;"Picture-in-Picture"
-     :geometry '(x 0.6 y 0.05 width 600 height 500)
-     :decoration  '(floating-mode-line nil
-                    tiling-mode-line nil
-                    floating-header-line nil
-                    tiling-header-line nil
-                    char-mode nil)))
+            :geometry '(x 0.6 y 0.05 width 600 height 500)
+            :decoration  '(floating-mode-line nil
+                                              tiling-mode-line nil
+                                              floating-header-line nil
+                                              tiling-header-line nil
+                                              char-mode nil)))
   "Default window geometries and decorations for the spawned floating window.
 Completely overrides the ``exwm-manage-configurations'' custom variable.
 
@@ -547,7 +546,7 @@ be bound locally."
   (unless height (setq height 1))
   (unless (and (= 0 width) (= 0 height))
     (let ((floating-container (frame-parameter exwm--floating-frame
-                                                'exwm-container)))
+                                               'exwm-container)))
       (exwm--set-geometry floating-container nil nil width height)
       (exwm--set-geometry exwm--id nil nil width height)
       (xcb:flush exwm--connection))))
