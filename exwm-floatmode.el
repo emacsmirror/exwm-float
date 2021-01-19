@@ -96,10 +96,10 @@ for more information."
                       (\S-\M-down . ('down t))))
     ;; Resize window
     (:title nil :common-fn exwm-floatmode-resize-delta
-            :keyargs ((\M-left . (-20 nil))
-                      (\M-right . (20 nil))
-                      (\M-up . (nil -20))
-                      (\M-down . (nil 20))))
+            :keyargs ((\M-left . ('dec nil))
+                      (\M-right . ('inc nil))
+                      (\M-up . (nil 'dec))
+                      (\M-down . (nil 'inc))))
     ;; Common controls
     (:title nil :keyargs (;; (?s . (call-interactively #'exwm-floatmode-position-save))
                           (?q . (exwm-floatmode--inner-mode-exit))
@@ -511,14 +511,23 @@ Used exclusively by ``exwm-floatmode-move''."
 (defun exwm-floatmode-resize-delta (&optional deltax deltay)
   "Resize the floating window by DELTAX pixels right and DELTAY pixels down.
 
-Both DELTAX and DELTAY default to 1.  This command should be bound locally."
+Both DELTAX and DELTAY default to 0 if nil.  Both values can also
+take the value 'inc or 'dec which reference the :resize keyword
+amount from ``exwm-floatmode-modify-amount''.  This command should
+be bound locally."
   (exwm-floatmode--do-floatfunc-and-restore
    (lambda (cwin fwin)
      (exwm--log "DeltaX: %s, DeltaY: %s" deltax deltay)
      (unless (and (derived-mode-p 'exwm-mode) exwm--floating-frame)
        (user-error "[EXWM] `exwm-floating-move' is only for floating X windows"))
-     (unless deltax (setq deltax 1))
-     (unless deltay (setq deltay 1))
+     (setq deltax (cond ((eq deltax 'inc) (plist-get exwm-floatmode-modify-amount :resize))
+                        ((eq deltax 'dec) (- (plist-get exwm-floatmode-modify-amount :resize)))
+                        ((not deltax) 0)
+                        (t deltax)))
+     (setq deltay (cond ((eq deltay 'inc) (plist-get exwm-floatmode-modify-amount :resize))
+                        ((eq deltay 'dec) (- (plist-get exwm-floatmode-modify-amount :resize)))
+                        ((not deltay) 0)
+                        (t deltay)))
      (unless (and (= 0 deltax) (= 0 deltay))
        (let* ((floating-container (frame-parameter exwm--floating-frame
                                                    'exwm-container))
