@@ -7,7 +7,7 @@
 ;; Author: Mehmet Tekman
 ;; URL: https://gitlab.com/mtekman/exwm-floatmode.el
 ;; Keywords: outlines
-;; Package-Requires: ((emacs "25.1") (xelb "0.18") (exwm "0.24") (dash "2.17.0"))
+;; Package-Requires: ((emacs "25.1") (xelb "0.18") (exwm "0.24") (dash "2.17.0") (popwin "1.0.2"))
 ;; Version: 0.3
 
 ;;; License:
@@ -45,6 +45,7 @@
 (require 'exwm-workspace)
 (require 'exwm-manage)
 (require 'dash)
+(require 'popwin)
 
 (defgroup exwm-floatmode nil
   "Customization group for picture-in-picture."
