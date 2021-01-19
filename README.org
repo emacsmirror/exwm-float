@@ -6,7 +6,7 @@ This package provides a minor mode for manipulating floating frames in [[https:/
 
 When enabled, the frame can be moved around by the keyboard, and user-customizable hotkeys can be used to place the frame in static locations.
 
-#+HTML: <img src="https://i.imgur.com/qhXPlqw.gif" width="540" height="360" />
+#+HTML: <img src="https://i.imgur.com/qhXPlqw.gif" />
 
 ** Installation
 
