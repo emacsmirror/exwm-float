@@ -51,12 +51,6 @@
   "Customization group for picture-in-picture."
   :group 'exwm-floating)
 
-(defcustom exwm-floatmode-title "Picture-in-Picture"
-  "Name of floating EXWM title to modify.
-This can be found by invoking ``exwm-title'' on a window."
-  :type 'string
-  :group 'exwm-floatmode)
-
 (defcustom exwm-floatmode-modify-amount
   '(:move-slow 20 :move-fast 100 :resize 50)
   "Incremental pixel amounts to MOVE-SLOW, MOVE-FAST or RESIZE the floating frame for the minor mode."
@@ -88,13 +82,13 @@ for more information."
   :group 'exwm-floatmode)
 
 (defcustom exwm-floatmode-custom-modes
-  '(;; Move window default
+  '(;; Move window slow
     (:title nil :common-fn exwm-floatmode-move-direction
             :keyargs ((\S-left . ('left))
                       (\S-right . ('right))
                       (\S-up .  ('up))
                       (\S-down . ('down))))
-    ;; Move window 100
+    ;; Move window fast
     (:title nil :common-fn exwm-floatmode-move-direction
             :keyargs ((\S-\M-left . ('left t))
                       (\S-\M-right . ('right t))
@@ -293,9 +287,9 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
   "Window before minor-mode was called, to be restored on exit.")
 
 (defun exwm-floatmode-minor-mode (&optional junk)
-  "Parent caller for ``exwm-floatmode-innermode''.
-Selects the floating window and sets the minor mode to STATE, 1 for on, anything else for off.
-Event JUNK is discarded."
+  "Parent caller for `function `exwm-floatmode-innermode''.
+Selects the floating window and sets the minor mode to STATE, 1
+for on, anything else for off.  Event JUNK is discarded."
   (interactive)
   (ignore junk)
   (when (exwm-floatmode--get-floating-frame)
@@ -309,7 +303,6 @@ Event JUNK is discarded."
         (add-hook 'next-error-hook #'exwm-floatmode--inner-mode-exit)
         (setq-local buffer-read-only t)
         (exwm-floatmode-innermode 1)))))
-
 
 (defvar exwm-floatmode--float-buffer nil
   "Buffer currently showed in the floating frame.")
@@ -440,7 +433,8 @@ It assumes the first tabbed position would yield the play/pause button."
 (defun exwm-floatmode-move-direction (direction &optional amount)
   "Move floating frame by AMOUNT in DIRECTION symbol: left, right, up, down.
 
-If AMOUNT is nil then use the :move-slow amount, if t then use the :move-fast amount, otherwise assume a pixel increment."
+If AMOUNT is nil then use the :move-slow amount, if t then use
+the :move-fast amount, otherwise assume a pixel increment."
   (interactive (list (read-key "Direction ")))
   (let ((amount (cond ((not amount) (plist-get exwm-floatmode-modify-amount :move-slow))
                       ((booleanp amount) (plist-get exwm-floatmode-modify-amount :move-fast))
@@ -461,10 +455,14 @@ If AMOUNT is nil then use the :move-slow amount, if t then use the :move-fast am
          (message "%s" (list :x x :y y :width: width :height height)))))))
 
 (defun exwm-floatmode--tolength (val dimension)
-  "If VAL is a positive integer or nil return it, if a positive float scale it by DIMENSION.
-If VAL is a negative integer then subtract it from DIMENSION.  If VAL is a negative float, then scale it by DIMENSION and subtract from DIMENSION.
+  "Scale a VAL to DIMENSION where appropriate.
 
-Used exclusively by ``exwm-floatmode-move''. "
+If VAL is positive integer or nil return it, if a positive float
+scale it by DIMENSION.  If VAL is a negative integer then
+subtract it from DIMENSION.  If VAL is a negative float, then
+scale it by DIMENSION and subtract from DIMENSION.
+
+Used exclusively by ``exwm-floatmode-move''."
   (cond ((not val) val)
         ((integerp val) (if (>= val 0) val
                           (+ dimension val)))
