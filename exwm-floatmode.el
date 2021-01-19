@@ -103,12 +103,12 @@ for more information."
     ;; Common controls
     (:title nil :keyargs (;; (?s . (call-interactively #'exwm-floatmode-position-save))
                           (?q . (exwm-floatmode--inner-mode-exit))
-                          (\S-? . (exwm-floatmode-forcetoggle-video))
                           (return . (exwm-floatmode--inner-mode-exit))))
     ;; Video-specific controls
     (:title "Picture-in-Picture" :common-fn exwm-floatmode--send-key
-            :keyargs (left right up down ? )))
-  "A list of sparse keymaps to be loaded when TITLE matches the ``exwm-title'' for the floating window.
+            :keyargs (left right up down ? ))
+    (:title "Picture-in-Picture" :keyargs ((\S-? . (exwm-floatmode-forcetoggle-video)))))
+  "A keymap list, loaded when TITLE matches ``exwm-title'' for the float window.
 
 If TITLE is nil, then the mode is enabled on all floating windows.
 The bindings are set by binding the car of each KEYARGS to the COMMON-FN plus the cdr of each KEYARGS.
@@ -253,32 +253,25 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
         (define-key map press titlefunc)))
     map))
 
-
-(defvar exwm-floatmode-innermode-map
-  (let ((map (make-sparse-keymap)))
-    ;; Load user-mode bindings
-    (dolist (entry exwm-floatmode-custom-modes)
-      (exwm-floatmode--convert2keymap entry map))
-    ;; Load user-position bindings
-    (exwm-floatmode--position-expandbindings
-     (exwm-floatmode--position-restore) map)
-    map)
-  "Construct the ``exwm-floatmode-innermode'' map.")
-
 ;; C-M-x to redefine this
 ;;(unintern 'exwm-floatmode-innermode)
 (define-minor-mode exwm-floatmode-innermode
   "The minor mode for manipulating the exwm floating frame. Works only when called from non-floating frame, and it should therefore only be called from the ``exwm-floatmode-minor-mode'' function, which ensures this. NEVER CALL THIS MODE DIRECTLY"
   :init-value nil
   :lighter " FloatMode"
+  :keymap (let ((map (make-sparse-keymap)))
+            ;; Load user-mode bindings
+            (dolist (entry exwm-floatmode-custom-modes)
+              (exwm-floatmode--convert2keymap entry map))
+            ;; Load user-position bindings
+            (exwm-floatmode--position-expandbindings
+             (exwm-floatmode--position-restore) map)
+            map)
   ;; init
   (let ((colwid (plist-get exwm-floatmode-border
                            (if exwm-floatmode-innermode :moving :stationary))))
     (customize-set-variable 'exwm-floating-border-color (car colwid))
-    (customize-set-variable 'exwm-floating-border-width (cdr colwid))
-    (if exwm-floatmode-innermode
-        ;; redefine this variable when the mode is active
-        (eval-defun 'exwm-floatmode-innermode-map))))
+    (customize-set-variable 'exwm-floating-border-width (cdr colwid))))
 
 (defun exwm-floatmode--refresh-minor-mode ()
   "Refresh the minor mode so that the new bindings from ``exwm-floatmode-position-configs'' take effect."
