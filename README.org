@@ -1,0 +1,156 @@
+#+TITLE: exwm-floatmode.el
+
+#+HTML: <a href="https://melpa.org/#/exwm-floatmode"><img src="https://melpa.org/packages/exwm-floatmode-badge.svg"></a>
+
+This package provides a minor mode for manipulating floating frames in [[https://github.com/ch11ng/exwm/][EXWM]], particularly /Picture-in-Picture/ frames though in theory it can target any floating frame.
+
+When enabled, the frame can be moved around by the keyboard, and user-customizable hotkeys can be used to place the frame in static locations.
+
+#+HTML: <img src="https://gitlab.com/mtekman/planemo-mode.el/uploads/e04f81243d459306b519379309a8a4a5/fixed1.gif" />
+
+** Installation
+
+   Install it from MELPA or using use-package:
+
+   #+begin_src elisp
+     (use-package exwm-floatmode
+       :init
+       (setq exwm-floatmode-modify-amount '(:move-slow 20 :move-fast 100 :resize 50)
+             exwm-floatmode-border '(:stationary ("navy" . 1) :moving ("maroon" . 2)))
+       (exwm-floatmode-setup)
+       (exwm-input-set-key (kbd "C-c M-f") #'exwm-floatmode-minor-mode))
+   #+end_src
+
+
+** Usage
+
+   Ensure that a floating window is present (e.g in Firefox, a /Picture-in-Picture/ frame can be popped out by invoking =C-M-]= though your mileage may vary) and then invoke the =exwm-floatmode-minor-mode= with the binding of your choice.
+
+   When the mode is active, the border of the floating frame will change colour from navy to maroon, and the thickness of the border will change from 1 pixel to 2 pixels (this can be customized with =exwm-floatmode-border=).
+
+   Due to issues relating to global minor-modes occurring undesirably in the minibuffer, a dedicated popup frame is spawned at the bottom of the workspace and it is within this buffer ("EXWM FloatMode") that the minor-mode is activated. All keyboard events should occur there.
+
+*** Moving
+
+    The frame can be moved slowly by 20 pixels up/down/left/right with =S-<arrow>= bindings, and moved fast by 100 pixels up/down/left/right with =S-M-<arrow>= bindings.
+
+    The fast and slow amounts can be customized by modifying the =:move-slow= and =:move-fast= keyword values in the =exwm-floatmode-modify-amount= plist. The actual bindings can be modified too by changing one of the elements in =exwm-floatmode-custom-modes=:
+
+    #+begin_src elisp
+      ;; Move window slow
+      (:title nil :common-fn exwm-floatmode-move-direction
+              :keyargs ((\S-left . ('left))
+                        (\S-right . ('right))
+                        (\S-up .  ('up))
+                        (\S-down . ('down))))
+      ;; Move window fast
+      (:title nil :common-fn exwm-floatmode-move-direction
+              :keyargs ((\S-\M-left . ('left t))
+                        (\S-\M-right . ('right t))
+                        (\S-\M-up . ('up t))
+                        (\S-\M-down . ('down t))))
+    #+end_src
+
+    The movement function itself can be invoked by =(exwm-floatmode-direction 'direction fast)=.
+
+*** Resize
+
+    The frame can be resized incrementally by 50 pixels in either the up/down/left/right directions with =M-<arrow>=, where this amount be customized by modifying the =:resize= keyword value in the  =exwm-floatmode-modify-amount= plist. The binding can also be changed within the =exwm-floatmode-custom-modes= variable:
+
+    #+begin_src elisp
+    ;; Resize window
+    (:title nil :common-fn exwm-floatmode-resize-delta
+            :keyargs ((\M-left . ('dec nil))
+                      (\M-right . ('inc nil))
+                      (\M-up . (nil 'dec))
+                      (\M-down . (nil 'inc))))
+    #+end_src
+
+*** Quit
+
+    To quit the mode, simply press =q= or =return=. as defined within the =exwm-floatmode-custom-modes= variable:
+
+    #+begin_src elisp
+      ;; Common controls
+      (:title nil :keyargs ((?q . (exwm-floatmode--inner-mode-exit))
+                            (return . (exwm-floatmode--inner-mode-exit))))
+    #+end_src
+
+** Video controls
+
+   Some bindings we want only to appear when the floating window title matches. In the case of /Picture-in-Picture/, the video controls for Firefox use the left/right arrow keys for seeking, the up/down arrow keys for volume control, and the spacebar for toggling the play/pause (with a =S-SPC= as fallback).
+
+   #+begin_src elisp
+     ;; Video-specific controls
+     (:title "Picture-in-Picture" :common-fn exwm-floatmode--send-key
+             :keyargs (left right up down ? ))
+     ;; In case pausing doesn't work, fake a mouseclick.
+     (:title "Picture-in-Picture" :keyargs ((\S-? . (exwm-floatmode-forcetoggle-video)))))
+   #+end_src
+
+   
+** Static Frame Placement
+
+*** Defaults
+
+    When a frame is spawned, the default position and dimension it will take can be set by the =exwm-floatmode-frame-defaults= variable, where each entry defines a GEOMETRY and DECORATION for each frame with a buffer matching TITLE (if =nil=, match all).
+
+    #+begin_src elisp
+      '((:title nil ;;"Picture-in-Picture"
+         :geometry '(x 0.6 y 0.05 width 600 height 500)
+         :decoration  '(floating-mode-line nil
+                        tiling-mode-line nil
+                        floating-header-line nil
+                        tiling-header-line nil
+                        char-mode nil)))
+    #+end_src
+   
+   
+*** User Placement
+   
+   Sometimes you just want to place a frame in a specific location without having to move it there first. For that we have the =exwm-floatmode-position-configs= custom variable:
+
+   #+begin_src elisp
+     '((:name "NW" :key "1" :title nil :x 0 :y 0 :width 0.25 :height 0.25)
+       (:name "NE" :key "2" :title nil :x -0.25 :y 0 :width 0.25 :height 0.25)
+       (:name "SW" :key "3" :title nil :x 0 :y -0.25 :width 0.25 :height 0.25)
+       (:name "SE" :key "4" :title nil :x -0.25 :y -0.25 :width 0.25 :height 0.25)
+       (:name "Center" :key "5" :title nil :x 0.25 :y 0.25 :width 0.5 :height 0.5)
+       (:name "Hide" :key "h" :title nil :x 0.5 :y -1 :width 1 :height 1))
+   #+end_src
+
+   The KEY sets the hotkey that when pressed will transport the frame with a buffer matching TITLE (if =nil=, match any) to position X Y and resizes it to WIDTH and HEIGHT dimensions. The position and dimension values can be absolute pixel values or fractions of the current screen space. If negative, then an offset from the screen edge is assumed.
+
+** Updates
+
+*** Changelog
+
+**** 0.3
+     - Added fractional and negative offset window placement rules
+     - Fixed global minor mode issue by now invoking it in a dedicated buffer
+     - Sensible default window placements
+     - Added readme
+
+**** 0.2
+     - Renamed and redefined to exwm-floatmode
+     - Added messages during toggling
+     - Implemented incremental resize and move
+
+**** 0.1
+     - EXWM-picture-in-picture-mode
+     - Initial release
+
+
+
+*** Planned Features
+
+    + Refreshable keymaps
+      - User can save frame configurations with a hotkey that will be written to file, and restored each time the mode is activated. Currently implemented, but disabled because it is hindered by the issue that keymaps are not being easily redefined.
+
+    + Handle multiple floating windows
+      - This might work already, but it needs to be defined clearer.
+
+
+
+    
+    
