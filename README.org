@@ -6,7 +6,7 @@ This package provides a minor mode for manipulating floating frames in [[https:/
 
 When enabled, the frame can be moved around by the keyboard, and user-customizable hotkeys can be used to place the frame in static locations.
 
-#+HTML: <img src="https://gitlab.com/mtekman/planemo-mode.el/uploads/e04f81243d459306b519379309a8a4a5/fixed1.gif" />
+#+HTML: <img src="https://gitlab.com/mtekman/exwm-floatmode.el/uploads/61a61f4fa8e014212a78e0c56b2d2394/out4.gifv" />
 
 ** Installation
 
