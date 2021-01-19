@@ -8,7 +8,7 @@
 ;; URL: https://gitlab.com/mtekman/exwm-floatmode.el
 ;; Keywords: outlines
 ;; Package-Requires: ((emacs "25.1") (xelb "0.18") (exwm "0.24") (dash "2.17.0"))
-;; Version: 0.2
+;; Version: 0.3
 
 ;;; License:
 
@@ -63,7 +63,7 @@ This can be found by invoking ``exwm-title'' on a window."
   :type 'plist
   :group 'exwm-floatmode)
 
-(defcustom exwm-floatmode-window-defaults
+(defcustom exwm-floatmode-frame-defaults
   '((:title nil ;;"Picture-in-Picture"
      :geometry '(x 0.6 y 0.05 width 600 height 500)
      :decoration  '(floating-mode-line nil
@@ -358,9 +358,7 @@ If the floating window is already selected, then just run FUNC."
 (defun exwm-floatmode-setup ()
   "Setup the floating window properties and associate it with the floating window.  Call this function upon loading the package."
   (interactive)
-  ;; we use customize-set-variable because it triggers the :set function
-  (setq exwm-manage-configurations nil)
-  (dolist (config exwm-floatmode-window-defaults)
+  (dolist (config exwm-floatmode-frame-defaults)
     (let* ((title (plist-get config :title))
            (geom (plist-get config :geometry))
            (decor (plist-get config :decoration))
