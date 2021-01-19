@@ -206,22 +206,22 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
 ;;               (setq exwm-floatmode-position-configs (car tmpvar))
 ;;             (user-error "Cannot parse"))))
 ;;     (user-error "``exwm-floatmode-position-file'' not set")))
-
-;; (defun exwm-floatmode--position-expandbindings (position-config map)
-;;   "Expand the bindings from POSITION-CONFIG (read from ``exwm-floatmode--position-restore'' into the keymap MAP, and check for conflicts."
-;;   (dolist (binding position-config)
-;;     (if (string-match " undefined" (describe-key-briefly [a]))
-;;         (let* ((key (plist-get binding :key))
-;;                (title (plist-get binding :title))
-;;                (x (plist-get binding :x)) (y (plist-get binding :y))
-;;                (w (plist-get binding :width)) (h (plist-get binding :height))
-;;                (func `(lambda () (interactive)
-;;                         (exwm-floatmode-move ,x ,y ,w ,h ,title)
-;;                         (message "%s" binding))))
-;;           (define-key map key func))
-;;       (user-error "%s is already set" binding))))
 ;;
 ;; --- END: Position Saving Functions ---
+
+(defun exwm-floatmode--position-expandbindings (position-config map)
+  "Expand the bindings from POSITION-CONFIG (read from ``exwm-floatmode--position-restore'' into the keymap MAP, and check for conflicts."
+  (dolist (binding position-config)
+    (if (string-match " undefined" (describe-key-briefly [a]))
+        (let* ((key (plist-get binding :key))
+               (title (plist-get binding :title))
+               (x (plist-get binding :x)) (y (plist-get binding :y))
+               (w (plist-get binding :width)) (h (plist-get binding :height))
+               (func `(lambda () (interactive)
+                        (exwm-floatmode-move ,x ,y ,w ,h ,title)
+                        (message "%s" binding))))
+          (define-key map key func))
+      (user-error "%s is already set" binding))))
 
 (defun exwm-floatmode--convert2keymap (entry &optional map)
   "Convert an ENTRY in ``exwm-floatmode-custom-modes'' and to keymap MAP."
@@ -265,7 +265,8 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
               (exwm-floatmode--convert2keymap entry map))
             ;; Load user-position bindings
             (exwm-floatmode--position-expandbindings
-             (exwm-floatmode--position-restore) map)
+             exwm-floatmode-position-configs map)
+            ;; (exwm-floatmode--position-restore) map)
             map)
   ;; init
   (let ((colwid (plist-get exwm-floatmode-border
