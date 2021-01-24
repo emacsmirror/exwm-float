@@ -389,7 +389,7 @@ is the currently selected window."
                         (user-error "No window selected")))
          (xy-pos (cond ((eq pos 'center) (cons (floor (/ (window-pixel-width) 2))
                                                (floor (/ (window-pixel-height) 2))))
-                       ((eq pos nil) (mouse-absolute-pixel-position))
+                       ((not pos) (mouse-absolute-pixel-position))
                        (t pos))) ;; assume X . Y
          (button-actions `((xcb:ButtonPress . ,button-mask)
                            (xcb:ButtonRelease . 0))))
