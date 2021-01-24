@@ -1,6 +1,4 @@
-;;; exwm-floatmode.el --- Convenient modes and bindings for
-;;; floating picture-in-picture EXWM frames -*- lexical-binding: t;
-;;; -*-
+;;; exwm-floatmode.el (GPL) --- Convenient modes and bindings for floating picture-in-picture EXWM frames -*- lexical-binding: t  -*-
 
 ;; Copyright (C) 2020 Mehmet Tekman <mtekman89@gmail.com>
 
@@ -584,4 +582,4 @@ If MATCHSTR is nil, default to ``.*[Ww]atch.*''.  If NUM is nil, limit to none."
     (message "Toggled: %s" toggled-windows)))
 
 (provide 'exwm-floatmode)
-;;; exwm-floatmode.el ends here
+;;; exwm-floatmode.el (GPL) ends here
