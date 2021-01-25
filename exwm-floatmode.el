@@ -5,7 +5,7 @@
 ;; Author: Mehmet Tekman
 ;; URL: https://gitlab.com/mtekman/exwm-floatmode.el
 ;; Keywords: outlines
-;; Package-Requires: ((emacs "25.1") (xelb "0.18") (exwm "0.24") (dash "2.17.0") (popwin "1.0.2"))
+;; Package-Requires: ((emacs "25.1") (xelb "0.18") (exwm "0.24") (popwin "1.0.2"))
 ;; Version: 0.3
 
 ;;; License:
@@ -42,7 +42,6 @@
 (require 'exwm-floating)
 (require 'exwm-workspace)
 (require 'exwm-manage)
-(require 'dash)
 (require 'popwin)
 
 (defgroup exwm-floatmode nil
@@ -199,7 +198,7 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
 ;;             (insert "")
 ;;             (write-file exwm-floatmode-position-file)))
 ;;         (insert-file-contents exwm-floatmode-position-file)
-;;         (let ((tmpvar (read-from-string (--> (buffer-string) (if (equal it "") "nil" it)))))
+;;         (let ((tmpvar (read-from-string (let ((it (buffer-string))) (if (equal it "") "nil" it)))))
 ;;           (if (car tmpvar)
 ;;               (setq exwm-floatmode-position-configs (car tmpvar))
 ;;             (user-error "Cannot parse"))))
@@ -333,13 +332,13 @@ If not found or currently active, search for it and update it."
 
 (defun exwm-floatmode--get-floating-window ()
   "Get the window of the floating buffer."
-  (--> (exwm-floatmode--get-floating-buffer)
-       (if it (get-buffer-window it t))))
+  (let ((it (exwm-floatmode--get-floating-buffer)))
+    (if it (get-buffer-window it t))))
 
 (defun exwm-floatmode--get-floating-frame ()
   "Get the frame of the floating buffer."
-  (--> (exwm-floatmode--get-floating-window)
-       (if it (window-frame it))))
+  (let ((it (exwm-floatmode--get-floating-window)))
+    (if it (window-frame it))))
 
 (defun exwm-floatmode--do-floatfunc-and-restore (func)
   "Select the floating window, perform FUNC and then restore the current window.
