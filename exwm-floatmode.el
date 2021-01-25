@@ -227,16 +227,16 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
         (keyargs (plist-get entry :keyargs))
         (map (or map (make-sparse-keymap))))
     (dolist (it keyargs)
-      (let* ((_key (if (eq (type-of it) 'cons) (car it) it))
-             (_args (if (eq (type-of it) 'cons) (cdr it)))
+      (let* ((key (if (eq (type-of it) 'cons) (car it) it))
+             (args (if (eq (type-of it) 'cons) (cdr it)))
              (func (if commonfn
-                       (if (not _args) ;; only key
-                           `(,commonfn ',_key)
-                         `(,commonfn ,@_args))
+                       (if (not args) ;; only key
+                           `(,commonfn ',key)
+                         `(,commonfn ,@args))
                      ;; no initial function
-                     (if (not _args)
-                         `(',_key)
-                       `(,@_args))))
+                     (if (not args)
+                         `(',key)
+                       `(,@args))))
              ;; TODO: Find a cleaner way to write the above
              (titlefunc `(lambda () (interactive)
                            (if (or (not ,title) ;; no title, or a direct match
@@ -245,8 +245,8 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
                                               exwm-title)
                                             ,title))
                                ,func)))
-             (press (cond ((eq _key 'SPC) `[? ])
-                          (t `[,_key]))))
+             (press (cond ((eq key 'SPC) `[? ])
+                          (t `[,key]))))
         (define-key map press titlefunc)))
     map))
 
@@ -282,7 +282,7 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
 (defun exwm-floatmode--send-key (keyseq)
   "Send KEYSEQ to floating window."
   (exwm-floatmode--do-floatfunc-and-restore
-   (lambda (c f) (exwm-input--fake-key keyseq))))
+   (lambda (c f) (ignore c f)(exwm-input--fake-key keyseq))))
 
 (defun exwm-floatmode--inner-mode-exit ()
   "Functions to run on move-mode exit.  Hooked to ``exwm-floating-exit-hook''."
@@ -307,6 +307,7 @@ for on, anything else for off.  Event JUNK is discarded."
            (newwin (popwin:popup-buffer floater
                                         :height 2 :position 'bottom
                                         :dedicated t :stick t :tail t)))
+      (ignore newwin)
       (with-current-buffer "EXWM FloatMode"
         (add-hook 'quit-window-hook #'exwm-floatmode--inner-mode-exit)
         (add-hook 'next-error-hook #'exwm-floatmode--inner-mode-exit)
@@ -429,6 +430,7 @@ It assumes the first tabbed position would yield the play/pause button."
   (interactive)
   (exwm-floatmode--do-floatfunc-and-restore
    (lambda (curr-win float-win)
+     (ignore curr-win float-win)
      ;; -- The below commented section does not work reliably
      ;; (setq exwm-floatmode--video-toggle (not exwm-floatmode--video-toggle))
      ;; (exwm-input--fake-key
@@ -450,6 +452,7 @@ the :move-fast amount, otherwise assume a pixel increment."
                       (t amount))))
     (exwm-floatmode--do-floatfunc-and-restore
      (lambda (a b)
+       (ignore a b)
        (cond ((eq direction 'left) (exwm-floating-move (- amount) 0))
              ((eq direction 'right) (exwm-floating-move amount 0))
              ((eq direction 'up) (exwm-floating-move 0 (- amount)))
@@ -483,6 +486,7 @@ Used exclusively by ``exwm-floatmode-move''."
   (interactive "nx: \nny: \nnwidth: \nnheight: ")
   (exwm-floatmode--do-floatfunc-and-restore
    (lambda (a b)
+     (ignore a b)
      (let ((floating-container (frame-parameter exwm--floating-frame
                                                 'exwm-container)))
        ;; if no title → continue
@@ -508,6 +512,7 @@ amount from ``exwm-floatmode-modify-amount''.  This command should
 be bound locally."
   (exwm-floatmode--do-floatfunc-and-restore
    (lambda (cwin fwin)
+     (ignore cwin fwin)
      (exwm--log "DeltaX: %s, DeltaY: %s" deltax deltay)
      (unless (and (derived-mode-p 'exwm-mode) exwm--floating-frame)
        (user-error "[EXWM] `exwm-floating-move' is only for floating X windows"))
@@ -525,7 +530,7 @@ be bound locally."
               (geometry (xcb:+request-unchecked+reply exwm--connection
                             (make-instance 'xcb:GetGeometry
                                            :drawable floating-container)))
-              (edges (window-inside-absolute-pixel-edges)))
+              (_edges (window-inside-absolute-pixel-edges)))
          (with-slots (x y width height) geometry
            (let ((width-new (+ width deltax))
                  (height-new (+ height deltay)))
