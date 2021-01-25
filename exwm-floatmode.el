@@ -295,6 +295,7 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
 (defvar exwm-floatmode--prebuffer nil
   "Window before minor-mode was called, to be restored on exit.")
 
+;;;###autoload
 (defun exwm-floatmode-minor-mode (&optional junk)
   "Parent caller for `function `exwm-floatmode-innermode''.
 Selects the floating window and sets the minor mode to STATE, 1
@@ -423,7 +424,6 @@ is the currently selected window."
 ;; (defvar exwm-floatmode--video-toggle nil
 ;;   "The video play/pause state.")
 
-;;;###autoload
 (defun exwm-floatmode-forcetoggle-video ()
   "Toggle the play/pause state of the video.
 It assumes the first tabbed position would yield the play/pause button."
@@ -554,8 +554,6 @@ be bound locally."
       (exwm--set-geometry exwm--id nil nil width height)
       (xcb:flush exwm--connection))))
 
-
-;;;###autoload
 (defun exwm-floatmode-pause-media-windows (&optional matchstr num)
   "Pause all media windows matching regex MATCHSTR, and limit to the first NUM.
 
