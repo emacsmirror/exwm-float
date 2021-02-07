@@ -1,0 +1,6 @@
+Window Configs:
+ * Setting window position saves (restoring now works)
+ * Refreshing the minor-mode map
+
+Multiple floating windows
+ * Currently, all the --get functions return one floating window when multiple could be possible.

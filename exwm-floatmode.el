@@ -26,15 +26,6 @@
 ;; easily move picture-in-picture frames around the screen and to
 ;; toggle playing and pausing video windows.
 
-;; TODO:
-;;
-;; Window Configs:
-;; * Setting window position saves (restoring now works)
-;; * Refreshing the minor-mode map
-;;
-;; Multiple floating windows
-;; * Currently, all the --get functions return one floating window when multiple could be possible.
-
 ;;; Code:
 (require 'xcb)
 (require 'exwm-core)
