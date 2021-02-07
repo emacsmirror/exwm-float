@@ -125,6 +125,9 @@ When enabled, the frame can be moved around by the keyboard, and user-customizab
 
 *** Changelog
 
+**** 0.4
+     - Renamed to exwm-float, so that exwm-float-mode makes sense
+
 **** 0.3
      - Added fractional and negative offset window placement rules
      - Fixed global minor mode issue by now invoking it in a dedicated buffer
