@@ -221,7 +221,9 @@ There are read from `exwm-floatmode--position-restore' into the
 keymap MAP, and check for conflicts."
   (dolist (binding position-config)
     (let* ((key (plist-get binding :key))
-           (not-bound (not (key-binding (kbd key)))))
+           (existing-binding (key-binding (kbd key)))
+           (not-bound (or (not existing-binding)
+                          (eq existing-binding 'self-insert-command))))
       (if not-bound
           (let* ((title (plist-get binding :title))
                  (x (plist-get binding :x)) (y (plist-get binding :y))
