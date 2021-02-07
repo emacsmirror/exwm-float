@@ -50,7 +50,8 @@
 
 (defcustom exwm-floatmode-modify-amount
   '(:move-slow 20 :move-fast 100 :resize 50)
-  "Incremental pixel amounts to MOVE-SLOW, MOVE-FAST or RESIZE the floating frame for the minor mode."
+  "Incremental pixel amounts to MOVE-SLOW, MOVE-FAST or RESIZE.
+These act on the floating frame during the minor mode."
   :type 'plist
   :group 'exwm-floatmode)
 
@@ -63,12 +64,14 @@
                                               tiling-header-line nil
                                               char-mode nil)))
   "Default window geometries and decorations for the spawned floating window.
-Completely overrides the ``exwm-manage-configurations'' custom variable.
+Completely overrides the `exwm-manage-configurations' custom
+variable.
 
-Each config will be applied to the matching floating window with TITLE.
-If TITLE is nil, then it matches all.  Note that specifying nil for certain
-options is not the same as leaving them out.  See ``exwm-manage-configurations''
-for more information."
+Each config will be applied to the matching floating window with
+TITLE.  If TITLE is nil, then it matches all.  Note that
+specifying nil for certain options is not the same as leaving
+them out.  See `exwm-manage-configurations' for more
+information."
   :type 'list ;; TODO: Specify the type format better, see the above variable for more info.
   :group 'exwm-floatmode)
 
@@ -105,25 +108,30 @@ for more information."
     (:title "Picture-in-Picture" :common-fn exwm-floatmode--send-key
             :keyargs (left right up down ? ))
     (:title "Picture-in-Picture" :keyargs ((\S-? . (exwm-floatmode-forcetoggle-video)))))
-  "A keymap list, loaded when TITLE matches ``exwm-title'' for the float window.
+  "A keymap list, loaded when TITLE matches `exwm-title' for the float window.
 
-If TITLE is nil, then the mode is enabled on all floating windows.
-The bindings are set by binding the car of each KEYARGS to the COMMON-FN plus the cdr of each KEYARGS.
+If TITLE is nil, then the mode is enabled on all floating
+windows.  The bindings are set by binding the car of each KEYARGS
+to the COMMON-FN plus the cdr of each KEYARGS.
 
 e.g.1 (:title \"Foo\" :common-fn #'fun1 :keyargs '((a 9)))
          becomes (([a] . (fun1 a))
                   ([9] . (fun1 9)))
 
-e.g.2 (:title \"Bar\" :common-fn #'fun2 :keyargs '((a . (b 22)) (9 . (123 m)) (left . (1 1))))
+e.g.2 (:title \"Bar\" :common-fn #'fun2 :keyargs '((a . (b 22))
+                                                   (9 . (123 m))
+                                                   (left . (1 1))))
          becomes (([a] . (fun2 b 22))
                   ([9] . (fun2 123 m))
                   ([left] . (fun2 1 1)))
 
-e.g.3 (:title \"Baz\" :common-fn nil :keyargs '((a . (fun1 1 22)) (b . (fun2 f g))))
+e.g.3 (:title \"Baz\" :common-fn nil :keyargs '((a . (fun1 1 22))
+                                                (b . (fun2 f g))))
          becomes (([a] . (fun1 1 22))
                   ([b] . (fun2 f g)))
 
-Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysyms found in ``xcb-keysyms.el''."
+Keys are either literal characters (e.g. ? for Space, ?f for 'f',
+etc) or keysyms found in `xcb-keysyms.el'."
   :type 'list
   :group 'exwm-floatmode)
 
@@ -134,8 +142,17 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
     (:name "SE" :key "4" :title nil :x -0.25 :y -0.25 :width 0.25 :height 0.25)
     (:name "Center" :key "5" :title nil :x 0.25 :y 0.25 :width 0.5 :height 0.5)
     (:name "Hide" :key "h" :title nil :x 0.5 :y -1 :width 1 :height 1))
-  "List of ``(:name N :key K :title T :x X :y Y :width W :height H))'' elements, where K denotes the keyboard sequence used to place the floating window matching TITLE to position X and Y and resizing it to W and H.  All positions can be fractional (denoting proportion of screen space) or integers (denoting absolute pixels), and if negative are treated as offsets from the screen boundary.  If TITLE is nil, then apply to the first floating window.  The name N is ignored."
-  :type 'list
+  "Property list of window properties.
+
+A `(:name N :key K :title T :x X :y Y :width W :height H))' list
+elements, where K denotes the keyboard sequence used to place the
+floating window matching TITLE to position X and Y and resizing
+it to W and H.  All positions can be fractional (denoting
+proportion of screen space) or integers (denoting absolute
+pixels), and if negative are treated as offsets from the screen
+boundary.  If TITLE is nil, then apply to the first floating
+window.  The name N is ignored."
+  :type 'plist
   :group 'exwm-floatmode)
 
 (defun exwm-floatmode--frame-geometry ()
@@ -168,8 +185,8 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
 
 ;; (defun exwm-floatmode--position-store (posinfo)
 ;;   "Store the following POSINFO into the
-;; ``exwm-floatmode-position-configs'' variable, and sync with the
-;; ``exwm-floatmode-position-file''."
+;; `exwm-floatmode-position-configs' variable, and sync with the
+;; `exwm-floatmode-position-file'."
 ;;   (pushnew posinfo exwm-floatmode-position-configs)
 ;;   (if exwm-floatmode-position-configs
 ;;       (with-temp-buffer
@@ -190,7 +207,7 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
 ;;         (write-file exwm-floatmode-position-file))))
 
 ;; (defun exwm-floatmode--position-restore ()
-;;   "Set the ``exwm-floatmode-position-configs'' variable from the contents of the ``exwm-floatmode-position-file'' and return it (to be fed directly into ``exwm-floatmode--position-expandbindings'')."
+;;   "Set the `exwm-floatmode-position-configs' variable from the contents of the `exwm-floatmode-position-file' and return it (to be fed directly into `exwm-floatmode--position-expandbindings')."
 ;;   (if exwm-floatmode-position-file
 ;;       (with-temp-buffer
 ;;         (unless (file-exists-p exwm-floatmode-position-file)
@@ -202,12 +219,15 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
 ;;           (if (car tmpvar)
 ;;               (setq exwm-floatmode-position-configs (car tmpvar))
 ;;             (user-error "Cannot parse"))))
-;;     (user-error "``exwm-floatmode-position-file'' not set")))
+;;     (user-error "`exwm-floatmode-position-file' not set")))
 ;;
 ;; --- END: Position Saving Functions ---
 
 (defun exwm-floatmode--position-expandbindings (position-config map)
-  "Expand the bindings from POSITION-CONFIG (read from ``exwm-floatmode--position-restore'' into the keymap MAP, and check for conflicts."
+  "Expand the bindings from POSITION-CONFIG.
+
+There are read from `exwm-floatmode--position-restore' into the
+keymap MAP, and check for conflicts."
   (dolist (binding position-config)
     (let* ((key (plist-get binding :key))
            (not-bound (not (key-binding (kbd key)))))
@@ -222,7 +242,7 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
         (user-error "Key: %s is already set" key)))))
 
 (defun exwm-floatmode--convert2keymap (entry &optional map)
-  "Convert an ENTRY in ``exwm-floatmode-custom-modes'' and to keymap MAP."
+  "Convert ENTRY in `exwm-floatmode-custom-modes' into keymap MAP."
   (let ((title (plist-get entry :title))
         (commonfn (plist-get entry :common-fn))
         (keyargs (plist-get entry :keyargs))
@@ -254,7 +274,12 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
 ;; C-M-x to redefine this
 ;;(unintern 'exwm-floatmode-innermode)
 (define-minor-mode exwm-floatmode-innermode
-  "The minor mode for manipulating the exwm floating frame. Works only when called from non-floating frame, and it should therefore only be called from the ``exwm-floatmode-minor-mode'' function, which ensures this. NEVER CALL THIS MODE DIRECTLY"
+  "The minor mode for manipulating the exwm floating frame.
+Works only when called from non-floating frame, and it should therefore only
+be called from the `exwm-floatmode-minor-mode' function, which ensures this.
+
+This mode should never be called directly, or at least never on a floating
+window buffer."
   :init-value nil
   :lighter " FloatMode"
   :keymap (let ((map (make-sparse-keymap)))
@@ -273,7 +298,7 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
     (customize-set-variable 'exwm-floating-border-width (cdr colwid))))
 
 (defun exwm-floatmode--refresh-minor-mode ()
-  "Refresh the minor mode so that the new bindings from ``exwm-floatmode-position-configs'' take effect."
+  "Refresh the minor mode for `exwm-floatmode-position-configs' to take effect."
   ;;(exwm-floatmode-minor-mode -1)
   ;;(exwm-floatmode-minor-mode 1)
   (exwm-floatmode--inner-mode-exit)
@@ -286,9 +311,9 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
    (lambda (c f) (ignore c f)(exwm-input--fake-key keyseq))))
 
 (defun exwm-floatmode--inner-mode-exit ()
-  "Functions to run on move-mode exit.  Hooked to ``exwm-floating-exit-hook''."
   (remove-hook 'quit-window-hook #'exwm-floatmode--inner-mode-exit)
   (remove-hook 'next-error-hook #'exwm-floatmode--inner-mode-exit)
+  "Functions to run on move-mode exit.  Hooked to `exwm-floating-exit-hook'."
   (when (get-buffer "EXWM FloatMode")
     (exwm-floatmode-innermode -1)
     (kill-buffer "EXWM FloatMode")))
@@ -298,7 +323,7 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
 
 ;;;###autoload
 (defun exwm-floatmode-minor-mode (&optional junk)
-  "Parent caller for `function `exwm-floatmode-innermode''.
+  "Parent caller for `function `exwm-floatmode-innermode'.
 Selects the floating window and sets the minor mode to STATE, 1
 for on, anything else for off.  Event JUNK is discarded."
   (interactive)
@@ -361,14 +386,17 @@ If the floating window is already selected, then just run FUNC."
 
 ;;;###autoload
 (defun exwm-floatmode-setup ()
-  "Setup the floating window properties and associate it with the floating window.  Call this function upon loading the package."
+  "Main initialisation function.
+
+Setup the floating window properties and associate it with the
+floating window.  Call this function upon loading the package."
   (interactive)
   (dolist (config exwm-floatmode-frame-defaults)
     (let* ((title (plist-get config :title))
            (geom (plist-get config :geometry))
            (decor (plist-get config :decoration))
            (newentry `((equal exwm-title ,title) ,@geom ,@decor)))
-      (add-to-list 'exwm-manage-configurations newentry)))
+      (add-to-list 'exwm-manage-configurations newentry))))
   ;; onsetup, disable the tab-bar in this frame
   (add-hook 'exwm-floating-setup-hook
             (lambda () (interactive)
@@ -382,7 +410,7 @@ If the floating window is already selected, then just run FUNC."
 
 POS can be an (x . y) cons pair, nil to click at the current
 location, or 'center to click in the center of the window.  By
-default BUTTON-NUM is ``1'' (i.e. main click) and the WINDOW-ID
+default BUTTON-NUM is `1' (i.e. main click) and the WINDOW-ID
 is the currently selected window."
   (let* ((button-index (intern (format "xcb:ButtonIndex:%d" (or button-num 1))))
          (button-mask (intern (format "xcb:ButtonMask:%d" (or button-num 1))))
@@ -475,7 +503,7 @@ scale it by DIMENSION.  If VAL is a negative integer then
 subtract it from DIMENSION.  If VAL is a negative float, then
 scale it by DIMENSION and subtract from DIMENSION.
 
-Used exclusively by ``exwm-floatmode-move''."
+Used exclusively by `exwm-floatmode-move'."
   (cond ((not val) val)
         ((integerp val) (if (>= val 0) val
                           (+ dimension val)))
@@ -483,7 +511,12 @@ Used exclusively by ``exwm-floatmode-move''."
                     (+ dimension (* val dimension)))))))
 
 (defun exwm-floatmode-move (x y width height &optional title)
-  "Move and resize floating window to position X and Y and size WIDTH and HEIGHT, optionally only if the window TITLE.  If any of the required arguments are fractional, then it scales itself to the size of the screen as determined by ``(x-display-pixel-height/width)''."
+  "Move and resize floating window.
+
+Move to position X and Y and size WIDTH and HEIGHT, optionally
+only if the window TITLE.  If any of the required arguments are
+fractional, then it scales itself to the size of the screen as
+determined by `(x-display-pixel-height/width)'."
   (interactive "nx: \nny: \nnwidth: \nnheight: ")
   (exwm-floatmode--do-floatfunc-and-restore
    (lambda (a b)
@@ -509,8 +542,8 @@ Used exclusively by ``exwm-floatmode-move''."
 
 Both DELTAX and DELTAY default to 0 if nil.  Both values can also
 take the value 'inc or 'dec which reference the :resize keyword
-amount from ``exwm-floatmode-modify-amount''.  This command should
-be bound locally."
+amount from `exwm-floatmode-modify-amount'.  This command
+should be bound locally."
   (exwm-floatmode--do-floatfunc-and-restore
    (lambda (cwin fwin)
      (ignore cwin fwin)
@@ -558,7 +591,8 @@ be bound locally."
 (defun exwm-floatmode-pause-media-windows (&optional matchstr num)
   "Pause all media windows matching regex MATCHSTR, and limit to the first NUM.
 
-If MATCHSTR is nil, default to ``.*[Ww]atch.*''.  If NUM is nil, limit to none."
+If MATCHSTR is nil, default to `.*[Ww]atch.*'.  If NUM is nil,
+limit to none."
   (interactive)
   (let* ((matchstr (or matchstr (rx (seq (* any)
                                          (or "YouTube" (any ?W ?w) "atch")
