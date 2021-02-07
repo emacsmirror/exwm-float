@@ -210,9 +210,7 @@ Keys are either literal characters (e.g. ? for Space, ?f for 'f', etc) or keysym
   "Expand the bindings from POSITION-CONFIG (read from ``exwm-floatmode--position-restore'' into the keymap MAP, and check for conflicts."
   (dolist (binding position-config)
     (let* ((key (plist-get binding :key))
-           (existing-binding (describe-key-briefly (kbd key)))
-           (not-bound (or (string-match " undefined"  existing-binding)
-                              (string-match " self-insert-command"  existing-binding))))
+           (not-bound (not (key-binding (kbd key)))))
       (if not-bound
           (let* ((title (plist-get binding :title))
                  (x (plist-get binding :x)) (y (plist-get binding :y))
