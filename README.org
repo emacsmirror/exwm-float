@@ -18,7 +18,7 @@ When enabled, the frame can be moved around by the keyboard, and user-customizab
        (setq exwm-float-modify-amount '(:move-slow 20 :move-fast 100 :resize 50)
              exwm-float-border '(:stationary ("navy" . 1) :moving ("maroon" . 2)))
        (exwm-float-setup)
-       (exwm-input-set-key (kbd "C-c M-f") #'exwm-float-minor-mode))
+       (exwm-input-set-key (kbd "C-c M-f") #'exwm-float-mode))
    #+end_src
 
 
